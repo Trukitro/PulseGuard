@@ -3,6 +3,23 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.0] - 2026-07-30
+
+### Added
+- "History" view: a new panel with 24h/7 days/30 days preset buttons showing
+  a combined RAM/CPU/GPU timeline (reusing spike-chart's existing combined
+  mode) plus a table of every spike in the selected range (when, metric,
+  from -> to, top process), so a user can review what happened with their
+  PC's resources in previous sessions rather than only the live dashboard.
+  No backend changes needed -- the existing /api/history endpoint already
+  accepted arbitrary d/h/m/s range strings.
+
+Verified live: opening History and switching between range presets
+correctly re-fetches and re-renders both the chart and the spike table,
+including genuinely old spike data (from RAM spikes manufactured much
+earlier in this project's development) still present in the SQLite history
+and rendering with correct formatting and process attribution.
+
 ## [0.19.0] - 2026-07-30
 
 ### Added

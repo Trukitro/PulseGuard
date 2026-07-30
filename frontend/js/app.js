@@ -45,6 +45,12 @@ const diskReadEl = document.getElementById("disk-read");
 const diskWriteEl = document.getElementById("disk-write");
 const netRecvEl = document.getElementById("net-recv");
 const netSentEl = document.getElementById("net-sent");
+const historyToggle = document.getElementById("history-toggle");
+const historyPanel = document.getElementById("history-panel");
+const historyChart = document.getElementById("history-chart");
+const historyRangeButtons = document.getElementById("history-range-buttons");
+const historySpikesTbody = document.querySelector("#history-spikes-table tbody");
+const historySpikesEmpty = document.getElementById("history-spikes-empty");
 
 function formatBps(bytesPerSec) {
   if (bytesPerSec == null) return "-";
@@ -369,6 +375,80 @@ ws.addEventListener("spike", (event) => {
   chart.pushSpike(spike);
   if (!liveViewToggle.checked) processList.showSpike(spike);
   toast.show(spike);
+});
+
+const METRIC_UNIT = { cpu: "%", gpu: "%", ram: " GB" };
+
+function formatSpikeAttribution(spike) {
+  const top = spike.top?.[0];
+  if (!top) return "-";
+  if (spike.metric === "cpu") return `${top.name} (${top.cpu_pct.toFixed(1)}%)`;
+  if (spike.metric === "gpu") return `${top.name} (${top.vram_gb.toFixed(2)} GB VRAM)`;
+  return `${top.name} (+${top.delta_gb.toFixed(2)} GB)`;
+}
+
+function renderHistorySpikes(spikes) {
+  const table = historySpikesTbody.closest("table");
+  historySpikesTbody.replaceChildren(
+    ...spikes
+      .slice()
+      .reverse()
+      .map((s) => {
+        const tr = document.createElement("tr");
+        const unit = METRIC_UNIT[s.metric] || "";
+        const cells = [
+          new Date(s.ts * 1000).toLocaleString([], { dateStyle: "short", timeStyle: "short" }),
+          METRIC_LABELS[s.metric] || s.metric,
+          `${s.from_value.toFixed(1)}${unit} -> ${s.to_value.toFixed(1)}${unit}`,
+          formatSpikeAttribution(s),
+        ];
+        tr.append(
+          ...cells.map((text) => {
+            const td = document.createElement("td");
+            td.textContent = text;
+            return td;
+          })
+        );
+        return tr;
+      })
+  );
+  historySpikesEmpty.style.display = spikes.length ? "none" : "block";
+  table.style.display = spikes.length ? "table" : "none";
+}
+
+let historyChartInitialized = false;
+async function loadHistoryRange(range) {
+  try {
+    const res = await fetch(`/api/history?range=${range}`);
+    const { ticks, spikes } = await res.json();
+    if (!historyChartInitialized) {
+      historyChart.setCombined(true);
+      historyChartInitialized = true;
+    }
+    historyChart.backfill(ticks, spikes);
+    renderHistorySpikes(spikes);
+  } catch (err) {
+    console.warn("history range fetch failed", err);
+  }
+}
+
+historyRangeButtons.addEventListener("click", (event) => {
+  const btn = event.target.closest("fluent-button[data-range]");
+  if (!btn) return;
+  for (const b of historyRangeButtons.querySelectorAll("fluent-button")) {
+    b.toggleAttribute("data-active", b === btn);
+  }
+  loadHistoryRange(btn.dataset.range);
+});
+
+let historyLoadedOnce = false;
+historyToggle.addEventListener("click", () => {
+  historyPanel.toggleAttribute("hidden");
+  if (!historyPanel.hasAttribute("hidden") && !historyLoadedOnce) {
+    historyLoadedOnce = true;
+    historyRangeButtons.querySelector('fluent-button[data-range="24h"]')?.toggleAttribute("data-active", true);
+    loadHistoryRange("24h");
+  }
 });
 
 settingsToggle.addEventListener("click", () => {

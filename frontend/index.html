@@ -113,6 +113,46 @@
       .io-value {
         font-variant-numeric: tabular-nums;
       }
+      #history-range-buttons {
+        display: flex;
+        gap: var(--pg-space-2);
+      }
+      #history-range-buttons fluent-button[data-active] {
+        --neutral-fill-stealth-rest: rgba(40, 153, 245, 0.2);
+      }
+      .history-spikes-heading {
+        margin: var(--pg-space-3) 0 var(--pg-space-2) 0;
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--pg-text-dim);
+      }
+      #history-spikes-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      #history-spikes-table th,
+      #history-spikes-table td {
+        text-align: left;
+        padding: 6px 10px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      }
+      #history-spikes-table th {
+        color: var(--pg-text-dim);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-size: 11px;
+        border-bottom: 1px solid var(--pg-panel-border);
+      }
+      #history-spikes-empty {
+        display: none;
+        color: var(--pg-text-dim);
+        font-size: 13px;
+        padding: var(--pg-space-2) 0;
+      }
       #mini-restore {
         display: none;
         position: fixed;
@@ -234,6 +274,7 @@
         </div>
         <button id="reconnect-btn" type="button">Reconnect</button>
         <fluent-button id="mini-mode-toggle" appearance="outline">Mini mode</fluent-button>
+        <fluent-button id="history-toggle" appearance="outline">History</fluent-button>
         <fluent-button id="settings-toggle" appearance="outline">Settings</fluent-button>
       </div>
     </header>
@@ -313,6 +354,26 @@
         <fluent-button id="settings-save" appearance="accent">Save</fluent-button>
       </fluent-card>
     </div>
+
+    <section id="history-panel" class="pg-panel panel" hidden>
+      <div class="panel-header">
+        <h2>History</h2>
+        <div id="history-range-buttons">
+          <fluent-button data-range="24h" appearance="outline">24h</fluent-button>
+          <fluent-button data-range="7d" appearance="outline">7 days</fluent-button>
+          <fluent-button data-range="30d" appearance="outline">30 days</fluent-button>
+        </div>
+      </div>
+      <spike-chart id="history-chart"></spike-chart>
+      <h3 class="history-spikes-heading">Spikes in range</h3>
+      <table id="history-spikes-table">
+        <thead>
+          <tr><th>When</th><th>Metric</th><th>Change</th><th>Top process</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div id="history-spikes-empty">No spikes in this range.</div>
+    </section>
 
     <section class="ring-cluster pg-panel">
       <pulse-ring id="ring-ram" label="RAM"></pulse-ring>
