@@ -23,6 +23,7 @@ from .paths import ASSETS_DIR, FRONTEND_DIR
 from .sampler import Sampler
 from .settings import Settings, load_settings, save_settings
 from .snapshot import ProcessTracker
+from .triggers import TriggerEngine
 
 _RANGE_UNITS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
 
@@ -72,6 +73,7 @@ class SettingsUpdate(BaseModel):
     chart_retention_minutes: Optional[int] = None
     color_warning_ratio: Optional[float] = None
     color_danger_margin_pct: Optional[float] = None
+    triggers: Optional[list] = None
     port: Optional[int] = None
 
 
@@ -83,6 +85,7 @@ class AppState:
         self.settings.autostart = autostart.is_enabled()
         self.sampler = Sampler()
         self.detector = Detector(self.settings)
+        self.trigger_engine = TriggerEngine()
         self.tracker = ProcessTracker()
         self.history = History()
         self.notifier = Notifier()
@@ -131,6 +134,14 @@ class AppState:
                     self.notifier.notify(spike)
                 tray_state.notify_spike(spike)
                 await self.manager.broadcast({"type": "spike", "data": spike})
+
+            for alert in self.trigger_engine.check(self.settings.triggers, tick):
+                unit = "%" if alert["metric"] in ("cpu", "gpu") else " GB"
+                title = f"PulseGuard - {alert['metric'].upper()} trigger"
+                message = f"{alert['metric'].upper()} at {alert['value']:.1f}{unit} (threshold {alert['threshold_value']:.1f}{unit})"
+                if self.settings.notifications_enabled and not await asyncio.to_thread(is_foreground_fullscreen):
+                    self.notifier.notify_custom(title, message)
+                await self.manager.broadcast({"type": "trigger_alert", "data": alert})
 
             if tick["ts"] - self._last_prune > 3600:
                 await asyncio.to_thread(self.history.prune, self.settings.retention_days)

@@ -38,6 +38,9 @@ class Notifier:
             f"in {spike['window_s']}s. Top: {headline}"
         )
 
+        self.notify_custom(title, message)
+
+    def notify_custom(self, title: str, message: str) -> None:
         if self._Notification is None:
             print(f"[notify] {title}: {message}")
             return

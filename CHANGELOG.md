@@ -3,6 +3,34 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.24.0] - 2026-07-30
+
+### Added
+- Custom trigger alarms (backend): user-defined absolute-value alerts,
+  independent of the existing %-ceiling spike detector -- e.g. "notify me
+  when RAM crosses 28 GB", with a configurable repeat-reminder interval
+  while the condition holds. New `TriggerEngine` (`triggers.py`) tracks
+  per-trigger last-fired times in memory, fires again once the reminder
+  interval elapses, and forgets the last-fired time the instant the value
+  drops back below threshold so the next crossing alerts immediately
+  instead of waiting out a stale interval.
+- `Settings.triggers`: a list of `{id, metric, threshold_value,
+  remind_interval_s, enabled}` entries, persisted and round-tripped through
+  the existing generic `/api/settings` GET/POST (no new endpoints needed).
+- `Notifier.notify_custom(title, message)`: generic toast helper extracted
+  from `notify()` so trigger alerts reuse the same winotify/console-fallback
+  path as spike notifications, instead of duplicating it.
+- The tick loop now checks every enabled trigger each cycle, sends a toast
+  (respecting `notifications_enabled` and game-mode auto-silence, same as
+  spikes) when one crosses, and broadcasts a new `{"type": "trigger_alert",
+  "data": {...}}` WebSocket message for the frontend to consume.
+
+### Note
+This release ships the backend engine and data model only. The Settings UI
+for creating/editing triggers, the "top consumers for this resource" view,
+and the Help documentation update land together in the next version
+(v0.25.0).
+
 ## [0.23.0] - 2026-07-30
 
 ### Fixed

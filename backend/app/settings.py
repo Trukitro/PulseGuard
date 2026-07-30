@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 
@@ -38,6 +38,11 @@ class Settings:
     # and beyond -- proactively, not only when an actual spike is firing.
     color_warning_ratio: float = 0.5
     color_danger_margin_pct: float = 12.0
+    # User-defined absolute-value alarms, independent of the %-ceiling spike
+    # detection above -- e.g. "alert me if RAM crosses 28 GB". Each entry:
+    # {id, metric ("ram"|"cpu"|"gpu"), threshold_value, remind_interval_s,
+    # enabled}. See triggers.py for the detection/repeat-reminder logic.
+    triggers: list = field(default_factory=list)
     port: int = 8731
 
 
