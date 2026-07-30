@@ -64,6 +64,20 @@
       #live-indicator[data-state="disconnected"] .label {
         color: var(--pg-danger);
       }
+      #reconnect-btn {
+        display: none;
+        border: none;
+        background: none;
+        color: var(--pg-accent);
+        font-size: 12px;
+        text-decoration: underline;
+        cursor: pointer;
+        padding: 0;
+      }
+      #live-indicator[data-state="stale"] ~ #reconnect-btn,
+      #live-indicator[data-state="disconnected"] ~ #reconnect-btn {
+        display: inline;
+      }
       .ring-cluster {
         display: flex;
         justify-content: center;
@@ -214,10 +228,11 @@
     <header>
       <img src="/assets/logo.svg" alt="PulseGuard" />
       <div class="header-right">
-        <div id="live-indicator" data-state="live">
+        <div id="live-indicator" data-state="live" title="Refreshing every 2s">
           <span class="dot"></span>
           <span class="label">Connecting...</span>
         </div>
+        <button id="reconnect-btn" type="button">Reconnect</button>
         <fluent-button id="mini-mode-toggle" appearance="outline">Mini mode</fluent-button>
         <fluent-button id="settings-toggle" appearance="outline">Settings</fluent-button>
       </div>

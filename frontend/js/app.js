@@ -35,6 +35,7 @@ const settingsToggle = document.getElementById("settings-toggle");
 const settingsSave = document.getElementById("settings-save");
 const liveIndicator = document.getElementById("live-indicator");
 const liveLabel = liveIndicator.querySelector(".label");
+const reconnectBtn = document.getElementById("reconnect-btn");
 const combinedToggle = document.getElementById("combined-toggle");
 const miniModeToggle = document.getElementById("mini-mode-toggle");
 const miniRestore = document.getElementById("mini-restore");
@@ -122,6 +123,7 @@ async function loadSettings() {
       field.checked = settingsCache[key];
     }
     chart.setRetention(settingsCache.chart_retention_minutes, settingsCache.poll_interval_s);
+    liveIndicator.title = `Refreshing every ${settingsCache.poll_interval_s}s`;
   } catch (err) {
     console.warn("settings fetch failed", err);
   }
@@ -142,6 +144,7 @@ async function saveSettings() {
   });
   settingsCache = await res.json();
   chart.setRetention(settingsCache.chart_retention_minutes, settingsCache.poll_interval_s);
+  liveIndicator.title = `Refreshing every ${settingsCache.poll_interval_s}s`;
   backfill();
 }
 
@@ -313,6 +316,15 @@ function updateLiveIndicator() {
 setInterval(updateLiveIndicator, 1000);
 
 const ws = new WsClient("/ws");
+
+reconnectBtn.addEventListener("click", () => {
+  reconnectBtn.disabled = true;
+  liveLabel.textContent = "Reconnecting...";
+  ws.reconnectNow();
+  setTimeout(() => {
+    reconnectBtn.disabled = false;
+  }, 1500);
+});
 
 ws.addEventListener("open", () => {
   wsConnected = true;

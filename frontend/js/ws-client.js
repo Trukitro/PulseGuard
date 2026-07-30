@@ -7,6 +7,7 @@ export class WsClient extends EventTarget {
     this._url = `${proto}//${location.host}${path}`;
     this._closedByUser = false;
     this._reconnectDelayMs = 1000;
+    this._reconnectTimer = null;
     this._ws = null;
     this._connect();
   }
@@ -35,15 +36,36 @@ export class WsClient extends EventTarget {
     ws.onclose = () => {
       this.dispatchEvent(new Event("close"));
       if (this._closedByUser) return;
-      setTimeout(() => this._connect(), this._reconnectDelayMs);
+      this._reconnectTimer = setTimeout(() => this._connect(), this._reconnectDelayMs);
       this._reconnectDelayMs = Math.min(this._reconnectDelayMs * 2, 15000);
     };
 
     ws.onerror = () => ws.close();
   }
 
+  /** Forces an immediate reconnect attempt, bypassing whatever's left of the
+   * exponential backoff -- for the UI's manual "Reconnect" action, so a user
+   * who notices "Stale"/"Disconnected" doesn't have to just wait it out. */
+  reconnectNow() {
+    if (this._reconnectTimer !== null) {
+      clearTimeout(this._reconnectTimer);
+      this._reconnectTimer = null;
+    }
+    this._reconnectDelayMs = 1000;
+    if (this._ws) {
+      this._ws.onclose = null; // avoid double-scheduling a reconnect from the old socket's close
+      try {
+        this._ws.close();
+      } catch {
+        /* already closed */
+      }
+    }
+    this._connect();
+  }
+
   close() {
     this._closedByUser = true;
+    if (this._reconnectTimer !== null) clearTimeout(this._reconnectTimer);
     this._ws?.close();
   }
 }

@@ -3,6 +3,25 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.17.0] - 2026-07-30
+
+### Added
+- Manual "Reconnect" link next to the live indicator, visible only when its
+  state is Stale or Disconnected -- lets the user force an immediate
+  reconnect attempt instead of waiting out the exponential backoff.
+  ws-client.js gained `reconnectNow()`: cancels any pending scheduled
+  reconnect, resets the backoff delay, and immediately opens a fresh
+  connection (tearing down the old socket's `onclose` handler first so it
+  can't also schedule a redundant reconnect).
+- The live indicator's tooltip now shows the current refresh cadence (e.g.
+  "Refreshing every 2s"), kept in sync with the poll_interval_s setting.
+
+Verified in an isolated test (mocked WebSocket): reconnectNow() immediately
+opens a new connection, resets the backoff delay to 1000ms, and correctly
+cancels the old scheduled reconnect (no duplicate connection appears when
+the original backoff window elapses). Button visibility/click wiring and
+the tooltip text verified live in a browser.
+
 ## [0.16.0] - 2026-07-30
 
 ### Added
