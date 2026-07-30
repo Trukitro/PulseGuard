@@ -3,6 +3,21 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.11.0] - 2026-07-30
+
+### Added
+- "Show all" toggle above the timeline: displays RAM/CPU/GPU simultaneously
+  as a 0-100% share of ceiling (RAM as `ram_pct` rather than absolute GB, so
+  all three share one axis), with Chart.js's built-in legend click-to-hide
+  per line. Selecting a specific ring exits combined mode and returns to the
+  single-metric detail view with accurate spike markers -- RAM spikes are
+  recorded in GB, not %, so they're deliberately not plotted in combined
+  mode to avoid a misleading scale.
+
+Verified live: combined mode shows correct %-based values for all three
+resources on a shared 0-100 axis, and clicking any ring correctly exits
+combined mode and restores accurate single-metric spike markers.
+
 ## [0.10.0] - 2026-07-30
 
 ### Changed

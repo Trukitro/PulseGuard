@@ -35,6 +35,7 @@ const settingsToggle = document.getElementById("settings-toggle");
 const settingsSave = document.getElementById("settings-save");
 const liveIndicator = document.getElementById("live-indicator");
 const liveLabel = liveIndicator.querySelector(".label");
+const combinedToggle = document.getElementById("combined-toggle");
 
 // Maps a settings key to its field element, one entry per threshold this
 // panel edits. poll_interval_s is the one shared (non-per-resource) field.
@@ -186,6 +187,10 @@ function selectMetric(metric) {
     ring.toggleAttribute("selected", isSelected);
     ring.setAttribute("aria-pressed", String(isSelected));
   }
+  // Picking a specific resource implies "focus on this one", including its
+  // accurate per-metric spike markers -- exit the combined %-based overview.
+  combinedToggle.checked = false;
+  chart.setCombined(false);
   chart.setMetric(metric);
 }
 
@@ -193,6 +198,10 @@ for (const [metric, ring] of Object.entries(RINGS)) {
   ring.addEventListener("click", () => selectMetric(metric));
 }
 selectMetric("ram");
+
+combinedToggle.addEventListener("change", () => {
+  chart.setCombined(combinedToggle.checked);
+});
 
 function flashHeartbeat() {
   liveIndicator.removeAttribute("data-flash");
