@@ -113,6 +113,40 @@
       .io-value {
         font-variant-numeric: tabular-nums;
       }
+      .drawer {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: min(420px, 90vw);
+        overflow-y: auto;
+        z-index: 2000;
+        padding: var(--pg-space-4);
+        background: var(--pg-bg);
+        border-right: 1px solid var(--pg-panel-border);
+        box-shadow: 8px 0 32px rgba(0, 0, 0, 0.5);
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        visibility: hidden;
+        border-radius: 0;
+      }
+      .drawer.open {
+        transform: translateX(0);
+        visibility: visible;
+      }
+      #drawer-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1999;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease;
+      }
+      #drawer-backdrop.open {
+        opacity: 1;
+        pointer-events: auto;
+      }
       #history-range-buttons {
         display: flex;
         gap: var(--pg-space-2);
@@ -394,7 +428,9 @@
       </fluent-card>
     </div>
 
-    <section id="history-panel" class="pg-panel panel" hidden>
+    <div id="drawer-backdrop"></div>
+
+    <section id="history-panel" class="pg-panel panel drawer">
       <div class="panel-header">
         <h2>History</h2>
         <div id="history-range-buttons">
@@ -414,7 +450,7 @@
       <div id="history-spikes-empty">No spikes in this range.</div>
     </section>
 
-    <section id="help-panel" class="pg-panel panel" hidden>
+    <section id="help-panel" class="pg-panel panel drawer">
       <h2>Help</h2>
 
       <div class="help-section">

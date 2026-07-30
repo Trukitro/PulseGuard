@@ -53,6 +53,23 @@ const historySpikesTbody = document.querySelector("#history-spikes-table tbody")
 const historySpikesEmpty = document.getElementById("history-spikes-empty");
 const helpToggle = document.getElementById("help-toggle");
 const helpPanel = document.getElementById("help-panel");
+const drawerBackdrop = document.getElementById("drawer-backdrop");
+
+const DRAWERS = [helpPanel, historyPanel];
+
+function openDrawer(panel) {
+  for (const d of DRAWERS) d.classList.toggle("open", d === panel);
+  drawerBackdrop.classList.add("open");
+}
+function closeDrawers() {
+  for (const d of DRAWERS) d.classList.remove("open");
+  drawerBackdrop.classList.remove("open");
+}
+function toggleDrawer(panel) {
+  if (panel.classList.contains("open")) closeDrawers();
+  else openDrawer(panel);
+}
+drawerBackdrop.addEventListener("click", closeDrawers);
 
 function formatBps(bytesPerSec) {
   if (bytesPerSec == null) return "-";
@@ -445,8 +462,8 @@ historyRangeButtons.addEventListener("click", (event) => {
 
 let historyLoadedOnce = false;
 historyToggle.addEventListener("click", () => {
-  historyPanel.toggleAttribute("hidden");
-  if (!historyPanel.hasAttribute("hidden") && !historyLoadedOnce) {
+  toggleDrawer(historyPanel);
+  if (historyPanel.classList.contains("open") && !historyLoadedOnce) {
     historyLoadedOnce = true;
     historyRangeButtons.querySelector('fluent-button[data-range="24h"]')?.toggleAttribute("data-active", true);
     loadHistoryRange("24h");
@@ -454,7 +471,7 @@ historyToggle.addEventListener("click", () => {
 });
 
 helpToggle.addEventListener("click", () => {
-  helpPanel.toggleAttribute("hidden");
+  toggleDrawer(helpPanel);
 });
 
 settingsToggle.addEventListener("click", () => {

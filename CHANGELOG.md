@@ -3,6 +3,23 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.22.0] - 2026-07-30
+
+### Changed
+- Help and History are now left-side slide-out drawers (hamburger-menu
+  style) instead of inline blocks that pushed the whole dashboard down.
+  Opening one closes the other (mutually exclusive), and a click on the
+  backdrop closes whichever is open. Still hidden by default, toggled by
+  their header buttons.
+
+Verified: opening Help correctly shows it and hides History if it was open;
+opening History correctly hides Help; clicking the backdrop closes
+whichever drawer is open. The underlying CSS transform/specificity was also
+independently verified correct via direct stylesheet inspection (rule
+presence, order, and specificity), since this session's browser tool
+couldn't reliably report live layout for these particular elements (the
+same "pane not composited" limitation noted earlier in this session).
+
 ## [0.21.0] - 2026-07-30
 
 ### Added
