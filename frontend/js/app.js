@@ -49,6 +49,7 @@ const FIELDS = {
 // Boolean settings, bound via fluent-switch's .checked rather than .value.
 const SWITCH_FIELDS = {
   notifications_enabled: document.getElementById("field-notifications"),
+  autostart: document.getElementById("field-autostart"),
 };
 
 let settingsCache = {
@@ -61,6 +62,7 @@ let settingsCache = {
   window_s: 20,
   poll_interval_s: 2,
   notifications_enabled: true,
+  autostart: false,
 };
 const spikeActiveUntilMs = { ram: 0, cpu: 0, gpu: 0 };
 

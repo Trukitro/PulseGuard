@@ -3,6 +3,21 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.7.0] - 2026-07-30
+
+### Added
+- Startup-with-Windows is now toggleable from the in-app settings ("General"
+  card), not just at install time via the Inno Setup checkbox. autostart.py
+  reads/writes the `HKCU\...\Run` registry entry directly. On startup, the
+  app treats the registry as ground truth and syncs the in-memory setting to
+  it, since Windows' own Task Manager > Startup tab can also toggle this
+  outside the app.
+
+Verified: toggling via both the REST API and the UI switch actually adds/
+removes the real registry value (checked with a separate process reading
+it back), and the app starts up correctly reflecting whatever the registry
+currently says.
+
 ## [0.6.0] - 2026-07-30
 
 ### Added

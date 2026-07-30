@@ -14,6 +14,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from . import autostart
 from .detector import Detector
 from .history import History
 from .notifier import Notifier
@@ -73,6 +74,9 @@ class SettingsUpdate(BaseModel):
 class AppState:
     def __init__(self) -> None:
         self.settings: Settings = load_settings()
+        # Registry is ground truth: Windows' own Task Manager > Startup tab can
+        # toggle this outside the app, so don't trust a possibly-stale setting.
+        self.settings.autostart = autostart.is_enabled()
         self.sampler = Sampler()
         self.detector = Detector(self.settings)
         self.tracker = ProcessTracker()
@@ -93,6 +97,8 @@ class AppState:
         self.history.close()
 
     def apply_settings(self, settings: Settings) -> None:
+        if settings.autostart != self.settings.autostart:
+            autostart.set_enabled(settings.autostart)
         self.settings = settings
         self.detector.update_settings(settings)
         save_settings(settings)
