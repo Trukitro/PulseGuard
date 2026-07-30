@@ -70,6 +70,35 @@
         gap: var(--pg-space-5);
         padding: var(--pg-space-4);
       }
+      .io-cluster {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--pg-space-3);
+      }
+      .io-card {
+        flex: 1 1 200px;
+        padding: var(--pg-space-3);
+      }
+      .io-card h3 {
+        margin: 0 0 var(--pg-space-2) 0;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--pg-text-dim);
+      }
+      .io-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+        padding: 4px 0;
+      }
+      .io-label {
+        color: var(--pg-text-dim);
+      }
+      .io-value {
+        font-variant-numeric: tabular-nums;
+      }
       #mini-restore {
         display: none;
         position: fixed;
@@ -258,6 +287,19 @@
       <pulse-ring id="ring-ram" label="RAM"></pulse-ring>
       <pulse-ring id="ring-cpu" label="CPU"></pulse-ring>
       <pulse-ring id="ring-gpu" label="GPU"></pulse-ring>
+    </section>
+
+    <section class="io-cluster">
+      <fluent-card class="io-card">
+        <h3>Disk</h3>
+        <div class="io-row"><span class="io-label">Read</span><span id="disk-read" class="io-value pg-mono">-</span></div>
+        <div class="io-row"><span class="io-label">Write</span><span id="disk-write" class="io-value pg-mono">-</span></div>
+      </fluent-card>
+      <fluent-card class="io-card">
+        <h3>Network</h3>
+        <div class="io-row"><span class="io-label">Down</span><span id="net-recv" class="io-value pg-mono">-</span></div>
+        <div class="io-row"><span class="io-label">Up</span><span id="net-sent" class="io-value pg-mono">-</span></div>
+      </fluent-card>
     </section>
 
     <section class="pg-panel panel">

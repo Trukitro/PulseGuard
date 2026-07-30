@@ -21,7 +21,11 @@ CREATE TABLE IF NOT EXISTS ticks (
     ram_pct REAL NOT NULL,
     cpu_pct_avg REAL NOT NULL,
     gpu_pct REAL,
-    vram_gb REAL
+    vram_gb REAL,
+    disk_read_bps REAL,
+    disk_write_bps REAL,
+    net_sent_bps REAL,
+    net_recv_bps REAL
 );
 CREATE TABLE IF NOT EXISTS spikes (
     ts REAL NOT NULL,
@@ -50,6 +54,17 @@ def _migrate_spikes_table(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _migrate_ticks_table(conn: sqlite3.Connection) -> None:
+    """v0.15.0 added Disk/Network I/O rate columns. Existing rows simply have
+    no reading for them (NULL) rather than needing any data transformation."""
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(ticks)").fetchall()}
+    new_cols = ["disk_read_bps", "disk_write_bps", "net_sent_bps", "net_recv_bps"]
+    for col in new_cols:
+        if col not in cols:
+            conn.execute(f"ALTER TABLE ticks ADD COLUMN {col} REAL")
+    conn.commit()
+
+
 class History:
     def __init__(self, db_path: Path = DB_PATH) -> None:
         # check_same_thread=False: callers dispatch each method via asyncio.to_thread,
@@ -58,13 +73,26 @@ class History:
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
         _migrate_spikes_table(self._conn)
+        _migrate_ticks_table(self._conn)
 
     def log_tick(self, tick: Tick) -> None:
         cpu_pct_avg = sum(tick["cpu_pct"]) / len(tick["cpu_pct"]) if tick["cpu_pct"] else 0.0
         self._conn.execute(
-            "INSERT OR REPLACE INTO ticks (ts, ram_gb, ram_pct, cpu_pct_avg, gpu_pct, vram_gb) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (tick["ts"], tick["ram_gb"], tick["ram_pct"], cpu_pct_avg, tick["gpu_pct"], tick["vram_gb"]),
+            "INSERT OR REPLACE INTO ticks "
+            "(ts, ram_gb, ram_pct, cpu_pct_avg, gpu_pct, vram_gb, disk_read_bps, disk_write_bps, net_sent_bps, net_recv_bps) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                tick["ts"],
+                tick["ram_gb"],
+                tick["ram_pct"],
+                cpu_pct_avg,
+                tick["gpu_pct"],
+                tick["vram_gb"],
+                tick.get("disk_read_bps"),
+                tick.get("disk_write_bps"),
+                tick.get("net_sent_bps"),
+                tick.get("net_recv_bps"),
+            ),
         )
         self._conn.commit()
 
@@ -83,11 +111,22 @@ class History:
         self._conn.commit()
 
     def query_ticks(self, since_ts: float) -> list[dict]:
+        cols = [
+            "ts",
+            "ram_gb",
+            "ram_pct",
+            "cpu_pct_avg",
+            "gpu_pct",
+            "vram_gb",
+            "disk_read_bps",
+            "disk_write_bps",
+            "net_sent_bps",
+            "net_recv_bps",
+        ]
         rows = self._conn.execute(
-            "SELECT ts, ram_gb, ram_pct, cpu_pct_avg, gpu_pct, vram_gb FROM ticks WHERE ts >= ? ORDER BY ts",
+            f"SELECT {', '.join(cols)} FROM ticks WHERE ts >= ? ORDER BY ts",
             (since_ts,),
         ).fetchall()
-        cols = ["ts", "ram_gb", "ram_pct", "cpu_pct_avg", "gpu_pct", "vram_gb"]
         return [dict(zip(cols, row)) for row in rows]
 
     def query_spikes(self, since_ts: float) -> list[dict]:

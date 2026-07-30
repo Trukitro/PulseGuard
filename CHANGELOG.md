@@ -3,6 +3,26 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.15.0] - 2026-07-30
+
+### Added
+- Disk I/O and Network I/O metrics: sampler.py now computes read/write and
+  up/down byte rates as a delta over psutil's cumulative disk/network
+  counters since the previous tick (the first tick after startup reports 0
+  rather than a spike from the implicit since-boot delta). New "Disk" and
+  "Network" stat cards show live formatted rates (B/s -> KB/s -> MB/s ->
+  GB/s). Display only in this version -- no spike detection or chart
+  integration yet, consistent with how RAM/CPU/GPU started before their own
+  detection was added.
+- history.py's `ticks` table gained the four new rate columns, migrated in
+  place for existing databases (existing rows just have no reading for
+  them, not a data transformation).
+
+Verified live: real disk/network activity from this dev session showed up
+correctly formatted (hundreds of MB/s during heavy disk I/O, hundreds of
+KB/s of background network traffic) in both the REST history payload and
+the rendered stat cards.
+
 ## [0.14.0] - 2026-07-30
 
 ### Added

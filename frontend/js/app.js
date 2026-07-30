@@ -40,6 +40,22 @@ const miniModeToggle = document.getElementById("mini-mode-toggle");
 const miniRestore = document.getElementById("mini-restore");
 const liveViewToggle = document.getElementById("live-view-toggle");
 const processPanelTitle = document.getElementById("process-panel-title");
+const diskReadEl = document.getElementById("disk-read");
+const diskWriteEl = document.getElementById("disk-write");
+const netRecvEl = document.getElementById("net-recv");
+const netSentEl = document.getElementById("net-sent");
+
+function formatBps(bytesPerSec) {
+  if (bytesPerSec == null) return "-";
+  const units = ["B/s", "KB/s", "MB/s", "GB/s"];
+  let value = bytesPerSec;
+  let i = 0;
+  while (value >= 1024 && i < units.length - 1) {
+    value /= 1024;
+    i++;
+  }
+  return `${value.toFixed(i > 0 && value < 10 ? 1 : 0)} ${units[i]}`;
+}
 
 if (new URLSearchParams(location.search).get("mode") === "mini") {
   document.body.classList.add("mini-mode");
@@ -162,6 +178,11 @@ function applyTick(tick) {
   } else {
     ringGpu.update({ pct: 0, display: "n/a" });
   }
+
+  diskReadEl.textContent = formatBps(tick.disk_read_bps);
+  diskWriteEl.textContent = formatBps(tick.disk_write_bps);
+  netRecvEl.textContent = formatBps(tick.net_recv_bps);
+  netSentEl.textContent = formatBps(tick.net_sent_bps);
 }
 
 // Also used as the WebView-throttling "catch-up": when the window was
