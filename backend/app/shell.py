@@ -15,7 +15,6 @@ import webbrowser
 
 import webview
 
-from .paths import ICON_PATH
 from .settings import load_settings
 
 APP_TITLE = "PulseGuard"
@@ -112,7 +111,10 @@ def main() -> None:
         min_size=(960, 640),
         background_color="#0B0E14",
     )
-    webview.start(debug=args.debug, icon=str(ICON_PATH) if ICON_PATH.exists() else None)
+    # pywebview's `icon` start() param only does anything on the GTK/QT backends;
+    # on Windows the window/taskbar icon comes from the exe's own icon resource,
+    # which pulseguard.spec already embeds via PyInstaller's --icon.
+    webview.start(debug=args.debug)
 
 
 if __name__ == "__main__":
