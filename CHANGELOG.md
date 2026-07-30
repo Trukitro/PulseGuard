@@ -3,6 +3,14 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.0] - 2026-07-30
+
+### Changed
+- Settings panel: RAM/CPU/GPU threshold groups are now three separate
+  `fluent-card` elements instead of divider-separated sections inside one
+  card, matching the app's existing "quiet Fluent cards" visual language
+  more literally.
+
 ## [0.4.0] - 2026-07-30
 
 ### Added
