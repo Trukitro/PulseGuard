@@ -3,6 +3,15 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.10.0] - 2026-07-30
+
+### Changed
+- Main window now opens maximized by default, both on cold start and when
+  reopened from the system tray.
+
+Verified with an isolated pywebview window via Win32 `IsZoomed()`: the
+window genuinely opens maximized, not just visually large.
+
 ## [0.9.1] - 2026-07-30
 
 ### Fixed

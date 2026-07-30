@@ -131,6 +131,7 @@ def main() -> None:
         height=860,
         min_size=(960, 640),
         background_color="#0B0E14",
+        maximized=True,
     )
 
     exiting = False
@@ -138,6 +139,7 @@ def main() -> None:
     def _open_from_tray() -> None:
         window.show()
         window.restore()
+        window.maximize()
 
     def _exit_from_tray() -> None:
         nonlocal exiting
