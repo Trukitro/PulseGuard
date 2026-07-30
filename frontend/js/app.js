@@ -51,6 +51,8 @@ const historyChart = document.getElementById("history-chart");
 const historyRangeButtons = document.getElementById("history-range-buttons");
 const historySpikesTbody = document.querySelector("#history-spikes-table tbody");
 const historySpikesEmpty = document.getElementById("history-spikes-empty");
+const helpToggle = document.getElementById("help-toggle");
+const helpPanel = document.getElementById("help-panel");
 
 function formatBps(bytesPerSec) {
   if (bytesPerSec == null) return "-";
@@ -449,6 +451,10 @@ historyToggle.addEventListener("click", () => {
     historyRangeButtons.querySelector('fluent-button[data-range="24h"]')?.toggleAttribute("data-active", true);
     loadHistoryRange("24h");
   }
+});
+
+helpToggle.addEventListener("click", () => {
+  helpPanel.toggleAttribute("hidden");
 });
 
 settingsToggle.addEventListener("click", () => {

@@ -3,6 +3,22 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.21.0] - 2026-07-30
+
+### Added
+- "Help" panel: a new in-app reference explaining what PulseGuard does, what
+  the ring colors/percentages/secondary amounts mean, the Timeline chart
+  (single-metric vs. combined "Show all" mode), Disk/Network cards, the
+  process panel's Spikes-vs-Live-view toggle, the live indicator's
+  Live/Stale/Disconnected states and Reconnect action, Mini mode, History,
+  the system tray, and what each setting controls. Purely static content --
+  no backend changes.
+
+Verified live: all 10 help sections render with the correct headings, and
+the RAM/CPU/GPU color-meaning swatches render with the exact green/amber/red
+colors matching the real ring tokens (rgb(108, 203, 95) / rgb(255, 185, 0) /
+rgb(232, 17, 35)).
+
 ## [0.20.0] - 2026-07-30
 
 ### Added

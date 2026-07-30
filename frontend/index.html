@@ -153,6 +153,44 @@
         font-size: 13px;
         padding: var(--pg-space-2) 0;
       }
+      #help-panel {
+        display: flex;
+        flex-direction: column;
+        gap: var(--pg-space-3);
+      }
+      .help-section h3 {
+        margin: 0 0 var(--pg-space-1) 0;
+        font-size: 13px;
+        color: var(--pg-text);
+      }
+      .help-section p,
+      .help-section li {
+        margin: 0 0 6px 0;
+        font-size: 13px;
+        color: var(--pg-text-dim);
+        line-height: 1.5;
+      }
+      .help-section ul {
+        margin: 0;
+        padding-left: 18px;
+      }
+      .help-swatch {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 4px;
+        vertical-align: middle;
+      }
+      .help-swatch.good {
+        background: var(--pg-good);
+      }
+      .help-swatch.warn {
+        background: var(--pg-warn);
+      }
+      .help-swatch.danger {
+        background: var(--pg-danger);
+      }
       #mini-restore {
         display: none;
         position: fixed;
@@ -275,6 +313,7 @@
         <button id="reconnect-btn" type="button">Reconnect</button>
         <fluent-button id="mini-mode-toggle" appearance="outline">Mini mode</fluent-button>
         <fluent-button id="history-toggle" appearance="outline">History</fluent-button>
+        <fluent-button id="help-toggle" appearance="outline">Help</fluent-button>
         <fluent-button id="settings-toggle" appearance="outline">Settings</fluent-button>
       </div>
     </header>
@@ -373,6 +412,95 @@
         <tbody></tbody>
       </table>
       <div id="history-spikes-empty">No spikes in this range.</div>
+    </section>
+
+    <section id="help-panel" class="pg-panel panel" hidden>
+      <h2>Help</h2>
+
+      <div class="help-section">
+        <h3>What PulseGuard does</h3>
+        <p>
+          PulseGuard watches your RAM, CPU, and GPU usage in the background and flags sudden
+          <strong>spikes</strong> -- not just high totals -- telling you which process caused one when it
+          happens. Disk and network activity are also shown for reference (no spike detection on those yet).
+        </p>
+      </div>
+
+      <div class="help-section">
+        <h3>The RAM / CPU / GPU rings</h3>
+        <ul>
+          <li>The big number is the current percentage; the smaller number under it is the absolute
+            amount (GB for RAM, VRAM GB for GPU).</li>
+          <li><span class="help-swatch good"></span><strong>Green</strong>: normal, well below your ceiling.</li>
+          <li><span class="help-swatch warn"></span><strong>Amber</strong>: past the "Warning" threshold
+            (a % of your ceiling) -- worth keeping an eye on.</li>
+          <li><span class="help-swatch danger"></span><strong>Red</strong>: within the "danger margin" of
+            your ceiling, or an actual spike is currently active.</li>
+          <li>Click a ring to focus the Timeline chart on that resource, with accurate spike markers for it.</li>
+        </ul>
+      </div>
+
+      <div class="help-section">
+        <h3>Timeline chart</h3>
+        <p>Shows the selected resource's history with red dots marking detected spikes. Toggle
+          <strong>"Show all"</strong> to overlay RAM/CPU/GPU together as percentages on one axis (click any
+          legend entry to hide/show that line) -- spike markers aren't shown in this combined view since
+          RAM's spikes are recorded in GB, not %, and plotting them here would misrepresent the scale.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>Disk &amp; Network cards</h3>
+        <p>Live read/write and download/upload rates, auto-scaled from B/s up to GB/s.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>Top processes panel</h3>
+        <p>By default shows the processes responsible for the last detected spike. Toggle
+          <strong>"Live view"</strong> to instead continuously show the current top processes for whichever
+          resource is selected, regardless of spikes.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>Live indicator</h3>
+        <p>The dot next to the logo pulses on every real update and reads <strong>Live</strong>,
+          <strong>Stale</strong> (data hasn't refreshed as recently as expected), or
+          <strong>Disconnected</strong>. A "Reconnect" link appears when it isn't Live, to force a fresh
+          connection instead of waiting. Hover it to see the current refresh interval.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>Mini mode</h3>
+        <p>Collapses the app to a small always-on-top widget showing just the three rings, for passive
+          monitoring while you work. Click the corner icon to restore the full window.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>History</h3>
+        <p>Browse what happened over the last 24 hours, 7 days, or 30 days -- a combined chart plus a list
+          of every spike in that range.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>System tray</h3>
+        <p>Closing the window minimizes PulseGuard to the tray rather than quitting -- it keeps
+          monitoring and notifying in the background. Right-click the tray icon to reopen the window, pause
+          notifications, or exit for real.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>Settings</h3>
+        <ul>
+          <li><strong>Ceiling</strong>: the usage level (%) that counts as "full" for that resource.</li>
+          <li><strong>Delta threshold</strong>: how much a resource has to jump within the detection window
+            to count as a spike, even if still under ceiling.</li>
+          <li><strong>Ring colors</strong>: "Warning past" is a % of ceiling; "Red within" is how many
+            percentage points before ceiling counts as danger.</li>
+          <li><strong>Notifications</strong> / <strong>Start with Windows</strong>: self-explanatory toggles.
+            Notifications also auto-pause automatically while a fullscreen app (like a game) is in front.</li>
+          <li><strong>Chart history</strong>: how much data the Timeline keeps in memory.</li>
+          <li><strong>Poll interval</strong>: how often PulseGuard samples your system, in seconds.</li>
+        </ul>
+      </div>
     </section>
 
     <section class="ring-cluster pg-panel">
