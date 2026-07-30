@@ -15,7 +15,9 @@ import webbrowser
 
 import webview
 
+from . import tray_state
 from .settings import load_settings
+from .tray import TrayIcon
 
 APP_TITLE = "PulseGuard"
 _MUTEX_NAME = "Local\\PulseGuardSingleInstance"
@@ -76,6 +78,25 @@ def _start_server(port: int) -> None:
     thread.start()
 
 
+def _format_spike_summary(spike: dict) -> str:
+    metric = spike["metric"]
+    top = spike.get("top", [])
+    label = {"ram": "RAM", "cpu": "CPU", "gpu": "GPU"}.get(metric, metric.upper())
+
+    if metric == "cpu":
+        unit = "%"
+        attribution = f"{top[0]['name']} ({top[0]['cpu_pct']:.0f}%)" if top else ""
+    elif metric == "gpu":
+        unit = "%"
+        attribution = f"{top[0]['name']} ({top[0]['vram_gb']:.2f} GB VRAM)" if top else ""
+    else:
+        unit = " GB"
+        attribution = f"{top[0]['name']} (+{top[0]['delta_gb']:.2f} GB)" if top else ""
+
+    base = f"{label} spike: {spike['from_value']:.1f}{unit} -> {spike['to_value']:.1f}{unit}"
+    return f"{base} ({attribution})" if attribution else base
+
+
 class JsApi:
     """Bridge for frontend/js/nav-guard.js's explicit, opt-in external links --
     the only sanctioned way anything in this app reaches the user's real
@@ -102,7 +123,7 @@ def main() -> None:
         print("PulseGuard backend failed to start", file=sys.stderr)
         sys.exit(1)
 
-    webview.create_window(
+    window = webview.create_window(
         title=APP_TITLE,
         url=f"http://127.0.0.1:{port}",
         js_api=JsApi(),
@@ -111,10 +132,43 @@ def main() -> None:
         min_size=(960, 640),
         background_color="#0B0E14",
     )
+
+    exiting = False
+
+    def _open_from_tray() -> None:
+        window.show()
+        window.restore()
+
+    def _exit_from_tray() -> None:
+        nonlocal exiting
+        exiting = True
+        tray_icon.stop()
+        window.destroy()
+
+    tray_icon = TrayIcon(on_open=_open_from_tray, on_exit=_exit_from_tray)
+    tray_icon.run_detached()
+    tray_state.set_spike_listener(lambda spike: tray_icon.show_spike(_format_spike_summary(spike)))
+
+    def _on_closing() -> bool:
+        # window.destroy() (from the tray's Exit item) fires this same closing
+        # event, same as clicking the X button -- without the `exiting` flag,
+        # hiding here would swallow a genuine exit and the window would just
+        # reappear-then-hide instead of the process actually ending.
+        if exiting:
+            return True
+        # The tray icon is the only "is this still running" indicator once the
+        # window's gone, so closing the window hides it instead of quitting --
+        # only the tray's Exit item actually ends the process.
+        window.hide()
+        return False
+
+    window.events.closing += _on_closing
+
     # pywebview's `icon` start() param only does anything on the GTK/QT backends;
     # on Windows the window/taskbar icon comes from the exe's own icon resource,
     # which pulseguard.spec already embeds via PyInstaller's --icon.
     webview.start(debug=args.debug)
+    tray_icon.stop()
 
 
 if __name__ == "__main__":

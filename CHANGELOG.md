@@ -3,6 +3,32 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.8.0] - 2026-07-30
+
+### Added
+- System tray icon (pystray): PulseGuard now shows a persistent tray icon
+  while running, with an "Open PulseGuard" / "Exit" menu. Closing the main
+  window hides it to the tray instead of quitting -- only the tray's Exit
+  item actually ends the process, so the tray icon is a real "is this still
+  running" indicator, not just decoration.
+- The tray icon's tooltip reflects the most recent spike (only when
+  notifications are enabled, mirroring the native toast) for ~15s before
+  reverting to "PulseGuard - running" -- a passive indicator alongside the
+  toast, not a second popup.
+
+### Fixed
+- A real bug caught during testing: `window.destroy()` (from the tray's Exit
+  item) fires the same `closing` event as clicking the window's X button.
+  Without tracking an explicit exiting flag, the close-to-tray handler would
+  swallow a genuine exit request and just hide the window again instead of
+  letting the process end.
+
+Verified with a dedicated test harness exercising the real TrayIcon/
+tray_state code: close-to-tray, spike-driven tooltip updates, reopen from
+tray, and clean exit-from-tray (process actually terminates) all confirmed
+working, plus a full rebuild/run of the packaged exe and installer with the
+new pystray/Pillow dependencies.
+
 ## [0.7.0] - 2026-07-30
 
 ### Added

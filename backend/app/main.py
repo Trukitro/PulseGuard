@@ -14,7 +14,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import autostart
+from . import autostart, tray_state
 from .detector import Detector
 from .history import History
 from .notifier import Notifier
@@ -120,6 +120,7 @@ class AppState:
                 await asyncio.to_thread(self.history.log_spike, spike)
                 if self.settings.notifications_enabled:
                     self.notifier.notify(spike)
+                    tray_state.notify_spike(spike)
                 await self.manager.broadcast({"type": "spike", "data": spike})
 
             if tick["ts"] - self._last_prune > 3600:
