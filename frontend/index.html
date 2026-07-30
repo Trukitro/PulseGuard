@@ -272,7 +272,13 @@
     </section>
 
     <fluent-card class="panel">
-      <h2>Top processes at last spike</h2>
+      <div class="panel-header">
+        <h2 id="process-panel-title">Top processes at last spike</h2>
+        <label class="switch-row">
+          Live view
+          <fluent-switch id="live-view-toggle"></fluent-switch>
+        </label>
+      </div>
       <process-list id="process-list"></process-list>
     </fluent-card>
 

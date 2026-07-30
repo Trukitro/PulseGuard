@@ -52,7 +52,7 @@ const TEMPLATE = `
 // Per spike metric: which columns to render and how to build a row's cells
 // from one entry in spike.top. RAM/GPU attribute by memory delta; CPU
 // attributes by live usage (there's no baseline to diff against for a rate).
-const COLUMNS = {
+const SPIKE_COLUMNS = {
   cpu: {
     headers: ["Process", "PID", "CPU"],
     cells: (p) => [p.name, String(p.pid), `${p.cpu_pct.toFixed(1)}%`],
@@ -67,6 +67,17 @@ const COLUMNS = {
   },
 };
 
+// The "Live" view has no baseline to diff against -- just the current
+// absolute reading -- so it drops the Delta column the spike view has.
+const LIVE_COLUMNS = {
+  cpu: SPIKE_COLUMNS.cpu,
+  gpu: SPIKE_COLUMNS.gpu,
+  ram: {
+    headers: ["Process", "PID", "Total"],
+    cells: (p) => [p.name, String(p.pid), `${p.total_gb.toFixed(2)} GB`],
+  },
+};
+
 export class ProcessList extends HTMLElement {
   connectedCallback() {
     if (this._built) return;
@@ -77,18 +88,16 @@ export class ProcessList extends HTMLElement {
     this._thead = root.querySelector("thead");
     this._tbody = root.querySelector("tbody");
     this._empty = root.querySelector(".empty");
-    this._setEmpty(true);
+    this._setEmpty(true, "No spikes detected yet.");
   }
 
-  _setEmpty(isEmpty) {
+  _setEmpty(isEmpty, message) {
     this._table.style.display = isEmpty ? "none" : "table";
     this._empty.style.display = isEmpty ? "block" : "none";
+    if (message) this._empty.textContent = message;
   }
 
-  showSpike(spike) {
-    const top = spike.top || [];
-    const cols = COLUMNS[spike.metric] || COLUMNS.default;
-
+  _render(cols, items) {
     const headRow = document.createElement("tr");
     headRow.append(...cols.headers.map((text) => {
       const th = document.createElement("th");
@@ -98,7 +107,7 @@ export class ProcessList extends HTMLElement {
     this._thead.replaceChildren(headRow);
 
     this._tbody.replaceChildren(
-      ...top.map((p) => {
+      ...items.map((p) => {
         const tr = document.createElement("tr");
         const values = cols.cells(p);
         const classNames = ["name", "", "delta", "total"];
@@ -113,7 +122,18 @@ export class ProcessList extends HTMLElement {
         return tr;
       })
     );
-    this._setEmpty(top.length === 0);
+  }
+
+  showSpike(spike) {
+    const top = spike.top || [];
+    this._render(SPIKE_COLUMNS[spike.metric] || SPIKE_COLUMNS.default, top);
+    this._setEmpty(top.length === 0, "No spikes detected yet.");
+  }
+
+  /** @param {"ram"|"cpu"|"gpu"} metric @param {Array} top */
+  showLive(metric, top) {
+    this._render(LIVE_COLUMNS[metric] || LIVE_COLUMNS.ram, top);
+    this._setEmpty(top.length === 0, "No process data yet.");
   }
 }
 

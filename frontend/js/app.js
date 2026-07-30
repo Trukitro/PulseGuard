@@ -38,6 +38,8 @@ const liveLabel = liveIndicator.querySelector(".label");
 const combinedToggle = document.getElementById("combined-toggle");
 const miniModeToggle = document.getElementById("mini-mode-toggle");
 const miniRestore = document.getElementById("mini-restore");
+const liveViewToggle = document.getElementById("live-view-toggle");
+const processPanelTitle = document.getElementById("process-panel-title");
 
 if (new URLSearchParams(location.search).get("mode") === "mini") {
   document.body.classList.add("mini-mode");
@@ -202,8 +204,10 @@ function pulseAll() {
 }
 
 const RINGS = { ram: ringRam, cpu: ringCpu, gpu: ringGpu };
+let selectedMetric = "ram";
 
 function selectMetric(metric) {
+  selectedMetric = metric;
   for (const [key, ring] of Object.entries(RINGS)) {
     const isSelected = key === metric;
     ring.toggleAttribute("selected", isSelected);
@@ -214,6 +218,8 @@ function selectMetric(metric) {
   combinedToggle.checked = false;
   chart.setCombined(false);
   chart.setMetric(metric);
+  updateProcessPanelTitle();
+  if (liveViewToggle.checked) fetchLiveProcesses();
 }
 
 for (const [metric, ring] of Object.entries(RINGS)) {
@@ -223,6 +229,35 @@ selectMetric("ram");
 
 combinedToggle.addEventListener("change", () => {
   chart.setCombined(combinedToggle.checked);
+});
+
+const METRIC_LABELS = { ram: "RAM", cpu: "CPU", gpu: "GPU" };
+
+function updateProcessPanelTitle() {
+  processPanelTitle.textContent = liveViewToggle.checked
+    ? `Live processes (${METRIC_LABELS[selectedMetric]})`
+    : "Top processes at last spike";
+}
+
+let liveViewTimer = null;
+
+async function fetchLiveProcesses() {
+  try {
+    const res = await fetch(`/api/processes/top?metric=${selectedMetric}`);
+    const { metric, top } = await res.json();
+    processList.showLive(metric, top);
+  } catch (err) {
+    console.warn("live process fetch failed", err);
+  }
+}
+
+liveViewToggle.addEventListener("change", () => {
+  updateProcessPanelTitle();
+  clearInterval(liveViewTimer);
+  if (liveViewToggle.checked) {
+    fetchLiveProcesses();
+    liveViewTimer = setInterval(fetchLiveProcesses, 2000);
+  }
 });
 
 function flashHeartbeat() {
@@ -274,7 +309,7 @@ ws.addEventListener("spike", (event) => {
   spikeActiveUntilMs[spike.metric] = (spike.ts + spike.window_s) * 1000;
   pulseAll();
   chart.pushSpike(spike);
-  processList.showSpike(spike);
+  if (!liveViewToggle.checked) processList.showSpike(spike);
   toast.show(spike);
 });
 

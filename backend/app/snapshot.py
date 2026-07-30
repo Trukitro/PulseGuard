@@ -30,6 +30,12 @@ class ProcessGpuUsage(TypedDict):
     vram_gb: float
 
 
+class ProcessRamUsage(TypedDict):
+    name: str
+    pid: int
+    total_gb: float
+
+
 class ProcessTracker:
     def __init__(self, history_s: float = 120.0) -> None:
         import psutil
@@ -104,11 +110,30 @@ class ProcessTracker:
         deltas.sort(key=lambda d: d["delta_gb"], reverse=True)
         return deltas[:top_n]
 
+    def top_ram(self, top_n: int = 5) -> list[ProcessRamUsage]:
+        """Live ranking by absolute RSS right now -- unlike top_deltas, no
+        baseline/window needed, used for the "Live" process view rather than
+        spike attribution."""
+        if not self._snapshots:
+            return []
+        _, latest = self._snapshots[-1]
+        usage: list[ProcessRamUsage] = [
+            {"name": name, "pid": pid, "total_gb": round(rss / (1024**3), 3)}
+            for pid, (name, rss) in latest.items()
+        ]
+        usage.sort(key=lambda d: d["total_gb"], reverse=True)
+        return usage[:top_n]
+
     def top_cpu(self, top_n: int = 5) -> list[ProcessCpuUsage]:
         usage: list[ProcessCpuUsage] = [
             {"name": name, "pid": pid, "cpu_pct": round(cpu_pct, 1)}
             for pid, (name, cpu_pct) in self._latest_cpu.items()
-            if cpu_pct > 0
+            # PID 0 is the System Idle Process -- psutil reports its
+            # cpu_percent() as accumulated *idle* time, which is the inverse
+            # of "usage" and can read in the thousands of percent on a quiet
+            # multi-core machine. Including it would dominate any top-N by
+            # usage with a number that means the opposite of what it looks like.
+            if cpu_pct > 0 and pid != 0
         ]
         usage.sort(key=lambda d: d["cpu_pct"], reverse=True)
         return usage[:top_n]

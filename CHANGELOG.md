@@ -3,6 +3,40 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.14.0] - 2026-07-30
+
+### Added
+- "Live view" toggle on the process panel: continuously shows the current
+  top-N processes for whichever resource is selected (RAM/CPU/GPU), polled
+  every 2s via a new `/api/processes/top` endpoint, instead of only showing
+  processes at the last spike. Switching rings while live view is on
+  immediately re-fetches for the newly selected metric. `ProcessTracker`
+  gained `top_ram()` (a live ranking by absolute RSS, no baseline needed --
+  unlike the delta-based `top_deltas()` spike attribution uses).
+
+### Fixed
+- `top_cpu()` (used by both CPU spike attribution and the new Live view)
+  was including PID 0, the System Idle Process. psutil reports its
+  cpu_percent() as accumulated *idle* time, the inverse of "usage" -- it
+  can read in the thousands of percent on a quiet multi-core machine and
+  would dominate any top-N-by-usage list with a number that means the
+  opposite of what it looks like. Now excluded.
+- Added a `Cache-Control: no-cache` middleware to all responses. The
+  packaged app always serves the frontend from the same origin
+  (127.0.0.1:<port>) across every version, and pywebview's WebView2 profile
+  persists its HTTP cache between runs -- without this, a user upgrading
+  PulseGuard could keep seeing stale JS/CSS from the previous version.
+  Revalidation (not no-store) still lets ETag/304s save bandwidth.
+
+Verified: the REST endpoint returns correct top-N data for all three
+metrics; the idle-process fix confirmed by direct before/after comparison
+against this machine's real process list; the full column-mapping/render
+logic (spike vs. live, all three metrics, both empty states) verified in
+an isolated Node-based test since a stale module cache in the test browser
+tab made in-browser verification of process-list.js unreliable; and the
+toggle-driven fetch/title-update/metric-switch wiring verified live in a
+real browser tab.
+
 ## [0.13.0] - 2026-07-30
 
 ### Added

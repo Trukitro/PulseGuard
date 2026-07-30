@@ -149,6 +149,19 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="PulseGuard", lifespan=lifespan)
 
 
+@app.middleware("http")
+async def _no_cache_static(request, call_next):
+    # The packaged app always serves the frontend from the same origin
+    # (127.0.0.1:<port>) across every version, and pywebview's WebView2
+    # profile persists its HTTP cache between runs -- without this, a user
+    # upgrading PulseGuard could keep seeing stale JS/CSS from the previous
+    # version until that cache happened to expire on its own. Forcing
+    # revalidation (rather than no-store) still lets ETag/304s save bandwidth.
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 @app.websocket("/ws")
 async def ws_endpoint(websocket: WebSocket) -> None:
     await state.manager.connect(websocket)
@@ -165,6 +178,20 @@ async def get_history(range: str = "1h") -> dict:
     ticks = await asyncio.to_thread(state.history.query_ticks, since_ts)
     spikes = await asyncio.to_thread(state.history.query_spikes, since_ts)
     return {"ticks": ticks, "spikes": spikes}
+
+
+@app.get("/api/processes/top")
+async def get_top_processes(metric: str = "ram", limit: int = 5) -> dict:
+    """Live top-N processes right now, independent of any spike -- backs the
+    process panel's "Live" view (polled by the frontend only while that mode
+    is active, rather than pushed over /ws on every tick)."""
+    if metric == "cpu":
+        top = await asyncio.to_thread(state.tracker.top_cpu, limit)
+    elif metric == "gpu":
+        top = await asyncio.to_thread(state.tracker.top_gpu, limit)
+    else:
+        top = await asyncio.to_thread(state.tracker.top_ram, limit)
+    return {"metric": metric, "top": top}
 
 
 @app.get("/api/settings")
