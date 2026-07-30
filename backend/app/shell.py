@@ -12,14 +12,11 @@ import socket
 import sys
 import threading
 import webbrowser
-from pathlib import Path
 
 import webview
 
+from .paths import ICON_PATH
 from .settings import load_settings
-
-ASSETS_DIR = Path(__file__).resolve().parents[2] / "assets"
-ICON_PATH = ASSETS_DIR / "icon.ico"
 
 APP_TITLE = "PulseGuard"
 _MUTEX_NAME = "Local\\PulseGuardSingleInstance"

@@ -8,7 +8,6 @@ import asyncio
 import time
 from contextlib import asynccontextmanager
 from dataclasses import asdict, replace
-from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -18,12 +17,10 @@ from pydantic import BaseModel
 from .detector import Detector
 from .history import History
 from .notifier import Notifier
+from .paths import ASSETS_DIR, FRONTEND_DIR
 from .sampler import Sampler
 from .settings import Settings, load_settings, save_settings
 from .snapshot import ProcessTracker
-
-FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
-ASSETS_DIR = Path(__file__).resolve().parents[2] / "assets"
 
 _RANGE_UNITS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
 

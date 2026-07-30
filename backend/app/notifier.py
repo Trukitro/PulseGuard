@@ -3,12 +3,8 @@ when winotify or its Windows dependency isn't available (e.g. running tests on n
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Optional
-
 from .detector import Spike
-
-_ICON_PATH = Path(__file__).resolve().parents[2] / "assets" / "icon.ico"
+from .paths import ICON_PATH as _ICON_PATH
 
 
 class Notifier:
