@@ -23,6 +23,7 @@ from .settings import Settings, load_settings, save_settings
 from .snapshot import ProcessTracker
 
 FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
+ASSETS_DIR = Path(__file__).resolve().parents[2] / "assets"
 
 _RANGE_UNITS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
 
@@ -157,5 +158,10 @@ async def update_settings(update: SettingsUpdate) -> dict:
     return asdict(state.settings)
 
 
+if ASSETS_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR)), name="assets")
+
+# Must be mounted last: "/" matches every path as a prefix, so any more specific
+# mount (like /assets above) needs to be registered first or it's never reached.
 if FRONTEND_DIR.exists():
     app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")

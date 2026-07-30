@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PulseGuard</title>
+    <link rel="icon" href="/assets/icon.ico" />
+    <link rel="stylesheet" href="css/tokens.css" />
+    <style>
+      body {
+        padding: var(--pg-space-4);
+        display: flex;
+        flex-direction: column;
+        gap: var(--pg-space-4);
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      header img {
+        height: 40px;
+        display: block;
+      }
+      .ring-cluster {
+        display: flex;
+        justify-content: center;
+        gap: var(--pg-space-5);
+        padding: var(--pg-space-4);
+      }
+      .panel {
+        padding: var(--pg-space-3);
+      }
+      .panel h2 {
+        margin: 0 0 var(--pg-space-2) 0;
+        font-size: 13px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--pg-text-dim);
+      }
+      #settings-panel {
+        display: flex;
+        flex-direction: column;
+        gap: var(--pg-space-2);
+        max-width: 320px;
+        padding: var(--pg-space-3);
+      }
+      #settings-panel[hidden] {
+        display: none;
+      }
+      #settings-panel label {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 12px;
+        color: var(--pg-text-dim);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <img src="/assets/logo.svg" alt="PulseGuard" />
+      <fluent-button id="settings-toggle" appearance="outline">Settings</fluent-button>
+    </header>
+
+    <fluent-card id="settings-panel" hidden>
+      <label>
+        RAM ceiling (%)
+        <fluent-text-field id="field-ceiling" type="number"></fluent-text-field>
+      </label>
+      <label>
+        RAM delta threshold (GB)
+        <fluent-text-field id="field-delta" type="number"></fluent-text-field>
+      </label>
+      <label>
+        Poll interval (s)
+        <fluent-text-field id="field-poll" type="number"></fluent-text-field>
+      </label>
+      <fluent-button id="settings-save" appearance="accent">Save</fluent-button>
+    </fluent-card>
+
+    <section class="ring-cluster pg-panel">
+      <pulse-ring id="ring-ram" label="RAM"></pulse-ring>
+      <pulse-ring id="ring-cpu" label="CPU"></pulse-ring>
+      <pulse-ring id="ring-gpu" label="GPU"></pulse-ring>
+    </section>
+
+    <section class="pg-panel panel">
+      <h2>RAM timeline</h2>
+      <spike-chart id="chart"></spike-chart>
+    </section>
+
+    <fluent-card class="panel">
+      <h2>Top processes at last spike</h2>
+      <process-list id="process-list"></process-list>
+    </fluent-card>
+
+    <alert-toast id="toast"></alert-toast>
+
+    <script src="vendor/chart.umd.min.js"></script>
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
