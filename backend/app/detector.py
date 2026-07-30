@@ -1,9 +1,11 @@
-"""Rolling-baseline spike detection: flags a sudden RAM increase, not just a high total."""
+"""Rolling-baseline spike detection: flags a sudden RAM or CPU increase, not
+just a high total. Each metric tracks its own rolling window/cooldown so a
+RAM spike and a CPU spike can fire independently in the same tick."""
 
 from __future__ import annotations
 
 from collections import deque
-from typing import Optional, TypedDict
+from typing import Callable, Optional, TypedDict
 
 from .sampler import Tick
 from .settings import Settings
@@ -12,8 +14,8 @@ from .settings import Settings
 class Spike(TypedDict):
     ts: float
     metric: str
-    from_gb: float
-    to_gb: float
+    from_value: float
+    to_value: float
     window_s: int
     window_start_ts: float
 
@@ -36,43 +38,100 @@ class _RollingWindow:
         return self._samples[0][0] if self._samples else None
 
 
-class Detector:
-    """Flags a RAM spike when either the absolute % ceiling is breached or the
-    delta-GB-per-window threshold is crossed. A cooldown suppresses re-firing
-    every tick while the RAM level stays elevated."""
+def _cpu_avg(tick: Tick) -> float:
+    cpu_pct = tick["cpu_pct"]
+    return sum(cpu_pct) / len(cpu_pct) if cpu_pct else 0.0
 
-    def __init__(self, settings: Settings) -> None:
-        self.settings = settings
-        self._ram_window = _RollingWindow(settings.window_s)
-        self._cooldown_until: float = 0.0
 
-    def update_settings(self, settings: Settings) -> None:
-        self.settings = settings
-        self._ram_window.window_s = settings.window_s
+class _MetricDetector:
+    """Flags a spike when either the absolute ceiling is breached or the
+    delta-per-window threshold is crossed. A cooldown suppresses re-firing
+    every tick while the value stays elevated."""
+
+    def __init__(
+        self,
+        metric: str,
+        window_s: float,
+        ceiling: float,
+        delta: float,
+        window_value_fn: Callable[[Tick], float],
+        ceiling_value_fn: Optional[Callable[[Tick], float]] = None,
+    ) -> None:
+        self.metric = metric
+        self.window = _RollingWindow(window_s)
+        self.window_s = window_s
+        self.ceiling = ceiling
+        self.delta = delta
+        self._window_value_fn = window_value_fn
+        self._ceiling_value_fn = ceiling_value_fn or window_value_fn
+        self._cooldown_until = 0.0
 
     def process(self, tick: Tick) -> Optional[Spike]:
         ts = tick["ts"]
-        self._ram_window.add(ts, tick["ram_gb"])
+        value = self._window_value_fn(tick)
+        self.window.add(ts, value)
 
         if ts < self._cooldown_until:
             return None
 
-        baseline = self._ram_window.min_value()
+        baseline = self.window.min_value()
         if baseline is None:
             return None
 
-        delta = tick["ram_gb"] - baseline
-        ceiling_hit = tick["ram_pct"] >= self.settings.ram_pct_ceiling
-        delta_hit = delta >= self.settings.ram_delta_gb
+        delta = value - baseline
+        ceiling_hit = self._ceiling_value_fn(tick) >= self.ceiling
+        delta_hit = delta >= self.delta
         if not (ceiling_hit or delta_hit):
             return None
 
-        self._cooldown_until = ts + self.settings.window_s
+        self._cooldown_until = ts + self.window_s
         return {
             "ts": ts,
-            "metric": "ram",
-            "from_gb": round(baseline, 2),
-            "to_gb": tick["ram_gb"],
-            "window_s": self.settings.window_s,
-            "window_start_ts": self._ram_window.earliest_ts() or ts,
+            "metric": self.metric,
+            "from_value": round(baseline, 2),
+            "to_value": round(value, 2),
+            "window_s": self.window_s,
+            "window_start_ts": self.window.earliest_ts() or ts,
         }
+
+
+class Detector:
+    def __init__(self, settings: Settings) -> None:
+        self.settings = settings
+        self._metrics = [
+            _MetricDetector(
+                "ram",
+                settings.window_s,
+                settings.ram_pct_ceiling,
+                settings.ram_delta_gb,
+                window_value_fn=lambda t: t["ram_gb"],
+                ceiling_value_fn=lambda t: t["ram_pct"],
+            ),
+            _MetricDetector(
+                "cpu",
+                settings.window_s,
+                settings.cpu_pct_ceiling,
+                settings.cpu_delta_pct,
+                window_value_fn=_cpu_avg,
+            ),
+        ]
+
+    def update_settings(self, settings: Settings) -> None:
+        self.settings = settings
+        for m in self._metrics:
+            m.window.window_s = settings.window_s
+            m.window_s = settings.window_s
+            if m.metric == "ram":
+                m.ceiling = settings.ram_pct_ceiling
+                m.delta = settings.ram_delta_gb
+            elif m.metric == "cpu":
+                m.ceiling = settings.cpu_pct_ceiling
+                m.delta = settings.cpu_delta_pct
+
+    def process(self, tick: Tick) -> list[Spike]:
+        spikes = []
+        for m in self._metrics:
+            spike = m.process(tick)
+            if spike is not None:
+                spikes.append(spike)
+        return spikes

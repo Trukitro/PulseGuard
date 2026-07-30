@@ -18,13 +18,21 @@ class Notifier:
 
     def notify(self, spike: Spike) -> None:
         top = spike.get("top", [])
-        headline = (
-            f"{top[0]['name']} (+{top[0]['delta_gb']:.2f} GB)"
-            if top
-            else "no single process stands out"
+        metric = spike["metric"]
+
+        if metric == "cpu":
+            headline = f"{top[0]['name']} ({top[0]['cpu_pct']:.0f}%)" if top else "no single process stands out"
+            unit = "%"
+            title = "PulseGuard - CPU spike"
+        else:
+            headline = f"{top[0]['name']} (+{top[0]['delta_gb']:.2f} GB)" if top else "no single process stands out"
+            unit = " GB"
+            title = "PulseGuard - RAM spike"
+
+        message = (
+            f"{spike['from_value']:.1f}{unit} -> {spike['to_value']:.1f}{unit} "
+            f"in {spike['window_s']}s. Top: {headline}"
         )
-        title = "PulseGuard — RAM spike"
-        message = f"{spike['from_gb']:.1f} -> {spike['to_gb']:.1f} GB in {spike['window_s']}s. Top: {headline}"
 
         if self._Notification is None:
             print(f"[notify] {title}: {message}")

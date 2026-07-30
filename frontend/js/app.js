@@ -29,8 +29,15 @@ const fieldCeiling = document.getElementById("field-ceiling");
 const fieldDelta = document.getElementById("field-delta");
 const fieldPoll = document.getElementById("field-poll");
 
-let settingsCache = { ram_pct_ceiling: 90, ram_delta_gb: 2, window_s: 20, poll_interval_s: 2 };
-let spikeActiveUntilMs = 0;
+let settingsCache = {
+  ram_pct_ceiling: 90,
+  ram_delta_gb: 2,
+  cpu_pct_ceiling: 90,
+  cpu_delta_pct: 40,
+  window_s: 20,
+  poll_interval_s: 2,
+};
+const spikeActiveUntilMs = { ram: 0, cpu: 0, gpu: 0 };
 
 async function loadSettings() {
   try {
@@ -69,9 +76,9 @@ async function backfill() {
   }
 }
 
-function ramState(tick, nowMs) {
-  if (nowMs < spikeActiveUntilMs) return "spike";
-  if (tick.ram_pct >= settingsCache.ram_pct_ceiling * 0.9) return "warning";
+function metricState(metric, value, ceiling, nowMs) {
+  if (nowMs < spikeActiveUntilMs[metric]) return "spike";
+  if (ceiling != null && value >= ceiling * 0.9) return "warning";
   return "normal";
 }
 
@@ -103,10 +110,18 @@ ws.addEventListener("tick", (event) => {
   const tick = event.detail;
   const nowMs = tick.ts * 1000;
 
-  ringRam.update({ pct: tick.ram_pct, display: `${tick.ram_gb.toFixed(1)} GB`, state: ramState(tick, nowMs) });
+  ringRam.update({
+    pct: tick.ram_pct,
+    display: `${tick.ram_gb.toFixed(1)} GB`,
+    state: metricState("ram", tick.ram_pct, settingsCache.ram_pct_ceiling, nowMs),
+  });
 
   const cpuAvg = tick.cpu_pct.length ? tick.cpu_pct.reduce((a, b) => a + b, 0) / tick.cpu_pct.length : 0;
-  ringCpu.update({ pct: cpuAvg, display: `${cpuAvg.toFixed(0)}%` });
+  ringCpu.update({
+    pct: cpuAvg,
+    display: `${cpuAvg.toFixed(0)}%`,
+    state: metricState("cpu", cpuAvg, settingsCache.cpu_pct_ceiling, nowMs),
+  });
 
   if (tick.gpu_pct != null) {
     ringGpu.update({ pct: tick.gpu_pct, display: `${tick.gpu_pct.toFixed(0)}%` });
@@ -119,7 +134,7 @@ ws.addEventListener("tick", (event) => {
 
 ws.addEventListener("spike", (event) => {
   const spike = event.detail;
-  spikeActiveUntilMs = (spike.ts + spike.window_s) * 1000;
+  spikeActiveUntilMs[spike.metric] = (spike.ts + spike.window_s) * 1000;
   pulseAll();
   chart.pushSpike(spike);
   processList.showSpike(spike);

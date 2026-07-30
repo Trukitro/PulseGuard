@@ -66,16 +66,23 @@ def main() -> None:
                 f'  CPU {cpu_avg:.1f}%  GPU {gpu_str}'
             )
 
-            spike = detector.process(tick)
-            if spike is not None:
-                spike["top"] = tracker.top_deltas(spike["window_start_ts"])
+            for spike in detector.process(tick):
+                if spike["metric"] == "cpu":
+                    spike["top"] = tracker.top_cpu()
+                    top_line = ", ".join(
+                        f'{p["name"]} ({p["cpu_pct"]:.1f}%)' for p in spike["top"]
+                    ) or "no per-process usage available"
+                    unit = "%"
+                else:
+                    spike["top"] = tracker.top_deltas(spike["window_start_ts"])
+                    top_line = ", ".join(
+                        f'{p["name"]} (+{p["delta_gb"]:.2f} GB)' for p in spike["top"]
+                    ) or "no per-process delta available"
+                    unit = " GB"
                 history.log_spike(spike)
                 notifier.notify(spike)
-                top_line = ", ".join(
-                    f'{p["name"]} (+{p["delta_gb"]:.2f} GB)' for p in spike["top"]
-                ) or "no per-process delta available"
                 print(
-                    f'  !! SPIKE ram: {spike["from_gb"]:.2f} -> {spike["to_gb"]:.2f} GB'
+                    f'  !! SPIKE {spike["metric"]}: {spike["from_value"]:.2f}{unit} -> {spike["to_value"]:.2f}{unit}'
                     f' over {spike["window_s"]}s - {top_line}'
                 )
 

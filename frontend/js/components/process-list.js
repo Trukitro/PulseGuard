@@ -43,13 +43,25 @@ const TEMPLATE = `
   }
 </style>
 <table>
-  <thead>
-    <tr><th>Process</th><th>PID</th><th>Delta</th><th>Total</th></tr>
-  </thead>
+  <thead></thead>
   <tbody></tbody>
 </table>
 <div class="empty">No spikes detected yet.</div>
 `;
+
+// Per spike metric: which columns to render and how to build a row's cells
+// from one entry in spike.top. RAM/GPU attribute by memory delta; CPU
+// attributes by live usage (there's no baseline to diff against for a rate).
+const COLUMNS = {
+  cpu: {
+    headers: ["Process", "PID", "CPU"],
+    cells: (p) => [p.name, String(p.pid), `${p.cpu_pct.toFixed(1)}%`],
+  },
+  default: {
+    headers: ["Process", "PID", "Delta", "Total"],
+    cells: (p) => [p.name, String(p.pid), `+${p.delta_gb.toFixed(2)} GB`, `${p.total_gb.toFixed(2)} GB`],
+  },
+};
 
 export class ProcessList extends HTMLElement {
   connectedCallback() {
@@ -58,6 +70,7 @@ export class ProcessList extends HTMLElement {
     const root = this.attachShadow({ mode: "open" });
     root.innerHTML = TEMPLATE;
     this._table = root.querySelector("table");
+    this._thead = root.querySelector("thead");
     this._tbody = root.querySelector("tbody");
     this._empty = root.querySelector(".empty");
     this._setEmpty(true);
@@ -70,20 +83,28 @@ export class ProcessList extends HTMLElement {
 
   showSpike(spike) {
     const top = spike.top || [];
+    const cols = COLUMNS[spike.metric] || COLUMNS.default;
+
+    const headRow = document.createElement("tr");
+    headRow.append(...cols.headers.map((text) => {
+      const th = document.createElement("th");
+      th.textContent = text;
+      return th;
+    }));
+    this._thead.replaceChildren(headRow);
+
     this._tbody.replaceChildren(
       ...top.map((p) => {
         const tr = document.createElement("tr");
-        const cell = (text, className) => {
-          const td = document.createElement("td");
-          if (className) td.className = className;
-          td.textContent = text;
-          return td;
-        };
+        const values = cols.cells(p);
+        const classNames = ["name", "", "delta", "total"];
         tr.append(
-          cell(p.name, "name"),
-          cell(String(p.pid)),
-          cell(`+${p.delta_gb.toFixed(2)} GB`, "delta"),
-          cell(`${p.total_gb.toFixed(2)} GB`, "total")
+          ...values.map((text, i) => {
+            const td = document.createElement("td");
+            if (classNames[i]) td.className = classNames[i];
+            td.textContent = text;
+            return td;
+          })
         );
         return tr;
       })

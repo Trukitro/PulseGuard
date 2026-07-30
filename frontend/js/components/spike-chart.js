@@ -108,7 +108,7 @@ export class SpikeChart extends HTMLElement {
     const ramData = this._ticks.slice(-MAX_POINTS).map((t) => ({ x: t.ts * 1000, y: cfg.tickValue(t) }));
     const spikeData = this._spikes
       .filter((s) => s.metric === this._metric)
-      .map((s) => ({ x: s.ts * 1000, y: s.to_gb }));
+      .map((s) => ({ x: s.ts * 1000, y: s.to_value }));
 
     this._chart.data.datasets[0].label = cfg.label;
     this._chart.data.datasets[0].data = ramData;
@@ -138,7 +138,7 @@ export class SpikeChart extends HTMLElement {
   pushSpike(spike) {
     this._spikes.push(spike);
     if (spike.metric === this._metric) {
-      this._chart.data.datasets[1].data.push({ x: spike.ts * 1000, y: spike.to_gb });
+      this._chart.data.datasets[1].data.push({ x: spike.ts * 1000, y: spike.to_value });
       this._chart.update("none");
     }
   }

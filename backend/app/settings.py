@@ -22,6 +22,8 @@ SETTINGS_PATH = get_config_dir() / "settings.json"
 class Settings:
     ram_pct_ceiling: float = 90.0
     ram_delta_gb: float = 2.0
+    cpu_pct_ceiling: float = 90.0
+    cpu_delta_pct: float = 40.0
     window_s: int = 20
     poll_interval_s: float = 2.0
     autostart: bool = False

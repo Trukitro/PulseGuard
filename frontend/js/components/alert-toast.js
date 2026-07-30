@@ -48,11 +48,13 @@ const TEMPLATE = `
 <div class="banner">
   <span class="dot"></span>
   <div>
-    <div class="title">RAM spike detected</div>
+    <div class="title"></div>
     <div class="body"></div>
   </div>
 </div>
 `;
+
+const METRIC_LABELS = { ram: "RAM", cpu: "CPU", gpu: "GPU" };
 
 export class AlertToast extends HTMLElement {
   connectedCallback() {
@@ -60,13 +62,22 @@ export class AlertToast extends HTMLElement {
     this._built = true;
     const root = this.attachShadow({ mode: "open" });
     root.innerHTML = TEMPLATE;
+    this._title = root.querySelector(".title");
     this._body = root.querySelector(".body");
   }
 
   show(spike, durationMs = 6000) {
     const top = spike.top?.[0];
-    const attribution = top ? `${top.name} +${top.delta_gb.toFixed(2)} GB` : "no single process stands out";
-    this._body.textContent = `${spike.from_gb.toFixed(1)} -> ${spike.to_gb.toFixed(1)} GB in ${spike.window_s}s -- ${attribution}`;
+    const unit = spike.metric === "cpu" ? "%" : " GB";
+    const attribution =
+      spike.metric === "cpu"
+        ? top && `${top.name} (${top.cpu_pct.toFixed(1)}%)`
+        : top && `${top.name} +${top.delta_gb.toFixed(2)} GB`;
+
+    this._title.textContent = `${METRIC_LABELS[spike.metric] || spike.metric} spike detected`;
+    this._body.textContent =
+      `${spike.from_value.toFixed(1)}${unit} -> ${spike.to_value.toFixed(1)}${unit} ` +
+      `in ${spike.window_s}s -- ${attribution || "no single process stands out"}`;
 
     clearTimeout(this._hideTimer);
     this.setAttribute("open", "");

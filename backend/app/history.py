@@ -26,12 +26,28 @@ CREATE TABLE IF NOT EXISTS ticks (
 CREATE TABLE IF NOT EXISTS spikes (
     ts REAL NOT NULL,
     metric TEXT NOT NULL,
-    from_gb REAL NOT NULL,
-    to_gb REAL NOT NULL,
+    from_value REAL NOT NULL,
+    to_value REAL NOT NULL,
     window_s INTEGER NOT NULL,
     top_json TEXT NOT NULL
 );
 """
+
+
+def _migrate_spikes_table(conn: sqlite3.Connection) -> None:
+    """v0.1.x/v0.2.0 named these columns from_gb/to_gb (RAM-only spikes at the
+    time). Widening to other metrics in v0.3.0 renamed them to the
+    metric-agnostic from_value/to_value -- add the new columns and backfill
+    from the old ones rather than dropping existing spike history."""
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(spikes)").fetchall()}
+    if "from_value" in cols:
+        return
+    if "from_gb" not in cols:
+        return  # fresh table, already created with the new schema
+    conn.execute("ALTER TABLE spikes ADD COLUMN from_value REAL")
+    conn.execute("ALTER TABLE spikes ADD COLUMN to_value REAL")
+    conn.execute("UPDATE spikes SET from_value = from_gb, to_value = to_gb")
+    conn.commit()
 
 
 class History:
@@ -41,6 +57,7 @@ class History:
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
+        _migrate_spikes_table(self._conn)
 
     def log_tick(self, tick: Tick) -> None:
         cpu_pct_avg = sum(tick["cpu_pct"]) / len(tick["cpu_pct"]) if tick["cpu_pct"] else 0.0
@@ -53,12 +70,12 @@ class History:
 
     def log_spike(self, spike: Spike) -> None:
         self._conn.execute(
-            "INSERT INTO spikes (ts, metric, from_gb, to_gb, window_s, top_json) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO spikes (ts, metric, from_value, to_value, window_s, top_json) VALUES (?, ?, ?, ?, ?, ?)",
             (
                 spike["ts"],
                 spike["metric"],
-                spike["from_gb"],
-                spike["to_gb"],
+                spike["from_value"],
+                spike["to_value"],
                 spike["window_s"],
                 json.dumps(spike.get("top", [])),
             ),
@@ -75,17 +92,18 @@ class History:
 
     def query_spikes(self, since_ts: float) -> list[dict]:
         rows = self._conn.execute(
-            "SELECT ts, metric, from_gb, to_gb, window_s, top_json FROM spikes WHERE ts >= ? ORDER BY ts",
+            "SELECT ts, metric, from_value, to_value, window_s, top_json FROM spikes "
+            "WHERE ts >= ? AND from_value IS NOT NULL ORDER BY ts",
             (since_ts,),
         ).fetchall()
         result = []
-        for ts, metric, from_gb, to_gb, window_s, top_json in rows:
+        for ts, metric, from_value, to_value, window_s, top_json in rows:
             result.append(
                 {
                     "ts": ts,
                     "metric": metric,
-                    "from_gb": from_gb,
-                    "to_gb": to_gb,
+                    "from_value": from_value,
+                    "to_value": to_value,
                     "window_s": window_s,
                     "top": json.loads(top_json),
                 }

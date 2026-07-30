@@ -1,4 +1,8 @@
-"""Tracks per-process RSS over time so a spike can be attributed to a process."""
+"""Tracks per-process RSS and CPU usage over time so a spike can be
+attributed to a process. RAM attribution is a delta (what grew since the
+spike's window start); CPU attribution is a live ranking, since psutil's
+per-process cpu_percent() is already a rate since the last sample -- there's
+no separate "baseline" to diff against."""
 
 from __future__ import annotations
 
@@ -13,6 +17,12 @@ class ProcessDelta(TypedDict):
     total_gb: float
 
 
+class ProcessCpuUsage(TypedDict):
+    name: str
+    pid: int
+    cpu_pct: float
+
+
 class ProcessTracker:
     def __init__(self, history_s: float = 120.0) -> None:
         import psutil
@@ -20,15 +30,22 @@ class ProcessTracker:
         self._psutil = psutil
         self.history_s = history_s
         self._snapshots: deque[tuple[float, dict[int, tuple[str, int]]]] = deque()
+        self._latest_cpu: dict[int, tuple[str, float]] = {}
 
     def snapshot(self, ts: float) -> None:
         psutil = self._psutil
         procs: dict[int, tuple[str, int]] = {}
-        for p in psutil.process_iter(["pid", "name", "memory_info"]):
+        latest_cpu: dict[int, tuple[str, float]] = {}
+        # Reusing process_iter's internal per-pid Process cache across calls is what
+        # makes this non-blocking cpu_percent() meaningful (rate since the previous
+        # snapshot) instead of always reporting 0.
+        for p in psutil.process_iter(["pid", "name", "memory_info", "cpu_percent"]):
             try:
                 info = p.info
+                name = info["name"] or "?"
                 rss = info["memory_info"].rss if info["memory_info"] else 0
-                procs[info["pid"]] = (info["name"] or "?", rss)
+                procs[info["pid"]] = (name, rss)
+                latest_cpu[info["pid"]] = (name, info["cpu_percent"] or 0.0)
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 continue
 
@@ -36,6 +53,7 @@ class ProcessTracker:
         cutoff = ts - self.history_s
         while self._snapshots and self._snapshots[0][0] < cutoff:
             self._snapshots.popleft()
+        self._latest_cpu = latest_cpu
 
     def top_deltas(self, since_ts: float, top_n: int = 5) -> list[ProcessDelta]:
         if not self._snapshots:
@@ -66,3 +84,12 @@ class ProcessTracker:
 
         deltas.sort(key=lambda d: d["delta_gb"], reverse=True)
         return deltas[:top_n]
+
+    def top_cpu(self, top_n: int = 5) -> list[ProcessCpuUsage]:
+        usage: list[ProcessCpuUsage] = [
+            {"name": name, "pid": pid, "cpu_pct": round(cpu_pct, 1)}
+            for pid, (name, cpu_pct) in self._latest_cpu.items()
+            if cpu_pct > 0
+        ]
+        usage.sort(key=lambda d: d["cpu_pct"], reverse=True)
+        return usage[:top_n]

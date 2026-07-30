@@ -3,6 +3,28 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.0] - 2026-07-30
+
+### Added
+- CPU spike detection: detector.py now tracks RAM and CPU independently, each
+  with its own rolling window/cooldown, so a sudden CPU spike is flagged the
+  same way a RAM spike is.
+- CPU spike attribution is a live top-N ranking by psutil's per-process
+  cpu_percent() (a rate since the last sample), not a delta -- there's no
+  "baseline" to diff a rate against the way there is for RAM's RSS.
+- New settings: `cpu_pct_ceiling` (default 90%), `cpu_delta_pct` (default 40
+  points) -- available via the REST API now; a settings-panel UI for them
+  lands in v0.4.0 alongside GPU.
+- process-list, alert-toast, and spike-chart are now metric-aware: CPU
+  spikes render a "CPU %" column/message instead of RAM's "Delta/Total (GB)".
+
+### Changed
+- Spike records are now metric-agnostic: `from_gb`/`to_gb` renamed to
+  `from_value`/`to_value` in the WS/REST contract and the SQLite schema.
+  Existing `history.db` files from v0.1.x/v0.2.0 are migrated in place
+  (new columns added and backfilled from the old ones; old columns are left
+  alone).
+
 ## [0.2.0] - 2026-07-30
 
 ### Added

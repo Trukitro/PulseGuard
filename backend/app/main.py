@@ -58,6 +58,8 @@ class ConnectionManager:
 class SettingsUpdate(BaseModel):
     ram_pct_ceiling: Optional[float] = None
     ram_delta_gb: Optional[float] = None
+    cpu_pct_ceiling: Optional[float] = None
+    cpu_delta_pct: Optional[float] = None
     window_s: Optional[int] = None
     poll_interval_s: Optional[float] = None
     autostart: Optional[bool] = None
@@ -98,9 +100,11 @@ class AppState:
             await asyncio.to_thread(self.tracker.snapshot, tick["ts"])
             await self.manager.broadcast({"type": "tick", "data": tick})
 
-            spike = self.detector.process(tick)
-            if spike is not None:
-                spike["top"] = await asyncio.to_thread(self.tracker.top_deltas, spike["window_start_ts"])
+            for spike in self.detector.process(tick):
+                if spike["metric"] == "cpu":
+                    spike["top"] = await asyncio.to_thread(self.tracker.top_cpu)
+                else:
+                    spike["top"] = await asyncio.to_thread(self.tracker.top_deltas, spike["window_start_ts"])
                 await asyncio.to_thread(self.history.log_spike, spike)
                 self.notifier.notify(spike)
                 await self.manager.broadcast({"type": "spike", "data": spike})
