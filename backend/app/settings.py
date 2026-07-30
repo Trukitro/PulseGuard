@@ -31,6 +31,7 @@ class Settings:
     notifications_enabled: bool = True
     autostart: bool = False
     retention_days: int = 30
+    chart_retention_minutes: int = 60
     port: int = 8731
 
 

@@ -69,6 +69,7 @@ class SettingsUpdate(BaseModel):
     notifications_enabled: Optional[bool] = None
     autostart: Optional[bool] = None
     retention_days: Optional[int] = None
+    chart_retention_minutes: Optional[int] = None
     port: Optional[int] = None
 
 

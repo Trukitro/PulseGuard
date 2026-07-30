@@ -3,6 +3,25 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.16.0] - 2026-07-30
+
+### Added
+- "Chart history (minutes)" setting controls how much historical data the
+  timeline chart backfills and keeps in memory, separate from the backend's
+  existing `retention_days` (SQLite pruning). spike-chart.js's fixed
+  `MAX_POINTS = 400` is now `setRetention(minutes, pollIntervalS)`, deriving
+  the actual point cap from the desired time span and current poll rate
+  (so a slower poll interval doesn't quietly cover less time), re-applied
+  whenever either setting changes and immediately trimming any buffers that
+  are now oversized.
+
+Verified in an isolated test: 60min at a 2s poll interval correctly derives
+1800 points, 5min derives 150; pushing past the cap correctly trims from the
+front; and shrinking retention after data has accumulated immediately trims
+existing buffers down to the new cap rather than waiting for it to age out
+naturally. Also verified the REST round-trip (load default 60, save 30,
+persisted correctly) and that /api/history accepts the resulting range.
+
 ## [0.15.0] - 2026-07-30
 
 ### Added

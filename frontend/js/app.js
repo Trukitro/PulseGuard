@@ -87,6 +87,7 @@ const FIELDS = {
   gpu_pct_ceiling: document.getElementById("field-gpu-ceiling"),
   gpu_delta_pct: document.getElementById("field-gpu-delta"),
   poll_interval_s: document.getElementById("field-poll"),
+  chart_retention_minutes: document.getElementById("field-chart-retention"),
 };
 
 // Boolean settings, bound via fluent-switch's .checked rather than .value.
@@ -106,6 +107,7 @@ let settingsCache = {
   poll_interval_s: 2,
   notifications_enabled: true,
   autostart: false,
+  chart_retention_minutes: 60,
 };
 const spikeActiveUntilMs = { ram: 0, cpu: 0, gpu: 0 };
 
@@ -119,6 +121,7 @@ async function loadSettings() {
     for (const [key, field] of Object.entries(SWITCH_FIELDS)) {
       field.checked = settingsCache[key];
     }
+    chart.setRetention(settingsCache.chart_retention_minutes, settingsCache.poll_interval_s);
   } catch (err) {
     console.warn("settings fetch failed", err);
   }
@@ -138,6 +141,8 @@ async function saveSettings() {
     body: JSON.stringify(body),
   });
   settingsCache = await res.json();
+  chart.setRetention(settingsCache.chart_retention_minutes, settingsCache.poll_interval_s);
+  backfill();
 }
 
 // /api/history ticks store an already-averaged cpu_pct_avg; live WS ticks
@@ -193,7 +198,7 @@ function applyTick(tick) {
 // of waiting for the next live tick to arrive.
 async function backfill() {
   try {
-    const res = await fetch("/api/history?range=1h");
+    const res = await fetch(`/api/history?range=${settingsCache.chart_retention_minutes}m`);
     const { ticks, spikes } = await res.json();
     chart.backfill(ticks, spikes);
     if (spikes.length) processList.showSpike(spikes[spikes.length - 1]);
@@ -346,5 +351,4 @@ document.addEventListener("visibilitychange", () => {
 });
 window.addEventListener("focus", catchUp);
 
-loadSettings();
-backfill();
+loadSettings().then(backfill);

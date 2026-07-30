@@ -12,7 +12,7 @@
  *     markers here -- RAM spikes are recorded in GB, not %, so plotting them
  *     against this axis would be misleading; switch to single-metric mode
  *     (click a ring) for accurate per-metric spike markers. */
-const MAX_POINTS = 400;
+const DEFAULT_MAX_POINTS = 400;
 
 // Live WS ticks carry cpu_pct as a per-core array; backfilled history ticks
 // (from /api/history, which stores an already-averaged cpu_pct_avg) don't.
@@ -84,6 +84,7 @@ export class SpikeChart extends HTMLElement {
     this._built = true;
     this._metric = "ram";
     this._combined = false;
+    this._maxPoints = DEFAULT_MAX_POINTS;
     this._ticks = [];
     this._spikes = [];
 
@@ -137,6 +138,19 @@ export class SpikeChart extends HTMLElement {
     });
   }
 
+  /** How many ticks to keep in memory, roughly retentionMinutes worth at the
+   * given poll interval. Re-derived whenever either setting changes, since
+   * a slower poll interval means fewer points cover the same time span. */
+  setRetention(retentionMinutes, pollIntervalS) {
+    const points = Math.ceil((retentionMinutes * 60) / Math.max(pollIntervalS, 0.1));
+    this._maxPoints = Math.max(10, points);
+    this._ticks = this._ticks.slice(-this._maxPoints);
+    for (const ds of this._chart.data.datasets) {
+      if (ds.data.length > this._maxPoints) ds.data = ds.data.slice(-this._maxPoints);
+    }
+    this._chart.update();
+  }
+
   /** @param {"ram"|"cpu"|"gpu"} metric */
   setMetric(metric) {
     if (!METRICS[metric] || metric === this._metric) return;
@@ -168,7 +182,7 @@ export class SpikeChart extends HTMLElement {
 
   _rebuildSingle() {
     const cfg = METRICS[this._metric];
-    const data = this._ticks.slice(-MAX_POINTS).map((t) => ({ x: t.ts * 1000, y: cfg.tickValue(t) }));
+    const data = this._ticks.slice(-this._maxPoints).map((t) => ({ x: t.ts * 1000, y: cfg.tickValue(t) }));
     const spikeData = this._spikes
       .filter((s) => s.metric === this._metric)
       .map((s) => ({ x: s.ts * 1000, y: s.to_value }));
@@ -184,14 +198,14 @@ export class SpikeChart extends HTMLElement {
   }
 
   _rebuildCombined() {
-    const points = this._ticks.slice(-MAX_POINTS);
+    const points = this._ticks.slice(-this._maxPoints);
     this._chart.data.datasets[2].data = points.map((t) => ({ x: t.ts * 1000, y: METRICS.ram.combinedValue(t) }));
     this._chart.data.datasets[3].data = points.map((t) => ({ x: t.ts * 1000, y: METRICS.cpu.combinedValue(t) }));
     this._chart.data.datasets[4].data = points.map((t) => ({ x: t.ts * 1000, y: METRICS.gpu.combinedValue(t) }));
   }
 
   backfill(ticks, spikes) {
-    this._ticks = ticks.slice(-MAX_POINTS);
+    this._ticks = ticks.slice(-this._maxPoints);
     this._spikes = spikes.slice();
     this._rebuildSingle();
     this._rebuildCombined();
@@ -200,17 +214,17 @@ export class SpikeChart extends HTMLElement {
 
   pushTick(tick) {
     this._ticks.push(tick);
-    if (this._ticks.length > MAX_POINTS) this._ticks.shift();
+    if (this._ticks.length > this._maxPoints) this._ticks.shift();
 
     const cfg = METRICS[this._metric];
     const single = this._chart.data.datasets[0].data;
     single.push({ x: tick.ts * 1000, y: cfg.tickValue(tick) });
-    if (single.length > MAX_POINTS) single.shift();
+    if (single.length > this._maxPoints) single.shift();
 
     for (const [i, key] of [[2, "ram"], [3, "cpu"], [4, "gpu"]]) {
       const combinedData = this._chart.data.datasets[i].data;
       combinedData.push({ x: tick.ts * 1000, y: METRICS[key].combinedValue(tick) });
-      if (combinedData.length > MAX_POINTS) combinedData.shift();
+      if (combinedData.length > this._maxPoints) combinedData.shift();
     }
 
     this._chart.update("none");
