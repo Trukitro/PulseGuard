@@ -41,12 +41,18 @@
       }
       #settings-panel {
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: flex-start;
         gap: var(--pg-space-3);
-        max-width: 340px;
       }
       #settings-panel[hidden] {
         display: none;
+      }
+      #settings-panel .settings-group,
+      #settings-panel #settings-footer {
+        flex: 1 1 240px;
+        max-width: 280px;
       }
       #settings-panel .settings-group {
         display: flex;

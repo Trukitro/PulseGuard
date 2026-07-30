@@ -3,6 +3,16 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.0] - 2026-07-30
+
+### Changed
+- Settings cards (RAM/CPU/GPU/General/footer) now lay out horizontally in a
+  wrapping row instead of stacking in one narrow column, so they use the
+  available width and wrap to the next row once they no longer fit.
+
+Verified at both the app's default (1280px) and minimum (960px) window
+widths: cards flow left-to-right and wrap correctly at both sizes.
+
 ## [0.8.0] - 2026-07-30
 
 ### Added
