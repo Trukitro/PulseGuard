@@ -86,7 +86,8 @@ def main() -> None:
                     ) or "no per-process delta available"
                     unit = " GB"
                 history.log_spike(spike)
-                notifier.notify(spike)
+                if cfg.notifications_enabled:
+                    notifier.notify(spike)
                 print(
                     f'  !! SPIKE {spike["metric"]}: {spike["from_value"]:.2f}{unit} -> {spike["to_value"]:.2f}{unit}'
                     f' over {spike["window_s"]}s - {top_line}'

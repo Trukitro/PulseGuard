@@ -4,6 +4,7 @@ import {
   fluentCard,
   fluentTextField,
   fluentDivider,
+  fluentSwitch,
   baseLayerLuminance,
   StandardLuminance,
 } from "../vendor/fluent-web-components.min.js";
@@ -14,7 +15,13 @@ import "./components/spike-chart.js";
 import "./components/process-list.js";
 import "./components/alert-toast.js";
 
-provideFluentDesignSystem().register(fluentButton(), fluentCard(), fluentTextField(), fluentDivider());
+provideFluentDesignSystem().register(
+  fluentButton(),
+  fluentCard(),
+  fluentTextField(),
+  fluentDivider(),
+  fluentSwitch()
+);
 baseLayerLuminance.setValueFor(document.body, StandardLuminance.DarkMode);
 
 const ringRam = document.getElementById("ring-ram");
@@ -39,6 +46,11 @@ const FIELDS = {
   poll_interval_s: document.getElementById("field-poll"),
 };
 
+// Boolean settings, bound via fluent-switch's .checked rather than .value.
+const SWITCH_FIELDS = {
+  notifications_enabled: document.getElementById("field-notifications"),
+};
+
 let settingsCache = {
   ram_pct_ceiling: 90,
   ram_delta_gb: 2,
@@ -48,6 +60,7 @@ let settingsCache = {
   gpu_delta_pct: 40,
   window_s: 20,
   poll_interval_s: 2,
+  notifications_enabled: true,
 };
 const spikeActiveUntilMs = { ram: 0, cpu: 0, gpu: 0 };
 
@@ -58,6 +71,9 @@ async function loadSettings() {
     for (const [key, field] of Object.entries(FIELDS)) {
       field.value = settingsCache[key];
     }
+    for (const [key, field] of Object.entries(SWITCH_FIELDS)) {
+      field.checked = settingsCache[key];
+    }
   } catch (err) {
     console.warn("settings fetch failed", err);
   }
@@ -67,6 +83,9 @@ async function saveSettings() {
   const body = {};
   for (const key of Object.keys(FIELDS)) {
     body[key] = Number(FIELDS[key].value);
+  }
+  for (const key of Object.keys(SWITCH_FIELDS)) {
+    body[key] = SWITCH_FIELDS[key].checked;
   }
   const res = await fetch("/api/settings", {
     method: "POST",

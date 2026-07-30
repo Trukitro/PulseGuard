@@ -28,6 +28,7 @@ class Settings:
     gpu_delta_pct: float = 40.0
     window_s: int = 20
     poll_interval_s: float = 2.0
+    notifications_enabled: bool = True
     autostart: bool = False
     retention_days: int = 30
     port: int = 8731

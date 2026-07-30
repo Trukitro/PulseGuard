@@ -64,6 +64,7 @@ class SettingsUpdate(BaseModel):
     gpu_delta_pct: Optional[float] = None
     window_s: Optional[int] = None
     poll_interval_s: Optional[float] = None
+    notifications_enabled: Optional[bool] = None
     autostart: Optional[bool] = None
     retention_days: Optional[int] = None
     port: Optional[int] = None
@@ -111,7 +112,8 @@ class AppState:
                 else:
                     spike["top"] = await asyncio.to_thread(self.tracker.top_deltas, spike["window_start_ts"])
                 await asyncio.to_thread(self.history.log_spike, spike)
-                self.notifier.notify(spike)
+                if self.settings.notifications_enabled:
+                    self.notifier.notify(spike)
                 await self.manager.broadcast({"type": "spike", "data": spike})
 
             if tick["ts"] - self._last_prune > 3600:

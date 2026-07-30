@@ -3,6 +3,14 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.0] - 2026-07-30
+
+### Added
+- Notifications on/off setting (`notifications_enabled`, default on), toggled
+  via a new "General" settings card. When off, spikes still stream over WS,
+  log to history, and show in the UI (toast/process-list/chart) -- only the
+  native winotify toast is suppressed.
+
 ## [0.5.0] - 2026-07-30
 
 ### Changed

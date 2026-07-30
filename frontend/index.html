@@ -69,6 +69,11 @@
         font-size: 12px;
         color: var(--pg-text-dim);
       }
+      #settings-panel label.switch-row {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+      }
       #settings-footer {
         display: flex;
         flex-direction: column;
@@ -117,6 +122,14 @@
         <label>
           Delta threshold (points)
           <fluent-text-field id="field-gpu-delta" type="number"></fluent-text-field>
+        </label>
+      </fluent-card>
+
+      <fluent-card class="settings-group">
+        <h3>General</h3>
+        <label class="switch-row">
+          Notifications
+          <fluent-switch id="field-notifications"></fluent-switch>
         </label>
       </fluent-card>
 
