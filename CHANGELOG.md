@@ -3,6 +3,23 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.13.0] - 2026-07-30
+
+### Added
+- Game-mode auto-silence: gamemode.py detects whether the foreground window
+  genuinely covers the entire monitor (taskbar included) -- distinct from a
+  merely maximized window, whose bottom edge stops short of the taskbar.
+  When true, spike notifications (the OS toast) are automatically
+  suppressed regardless of the user's own notifications_enabled toggle, so
+  a spike doesn't pop up over a game or fullscreen video. The tray tooltip
+  still updates either way since it's passive (hover-only, not an
+  interruption).
+
+Verified: a genuinely fullscreen test window correctly returns True, while
+an otherwise-identical maximized (non-fullscreen) window correctly returns
+False -- confirming the core maximized-vs-fullscreen distinction the
+heuristic depends on.
+
 ## [0.12.0] - 2026-07-30
 
 ### Added

@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from . import autostart, tray_state
 from .detector import Detector
+from .gamemode import is_foreground_fullscreen
 from .history import History
 from .notifier import Notifier
 from .paths import ASSETS_DIR, FRONTEND_DIR
@@ -118,9 +119,14 @@ class AppState:
                 else:
                     spike["top"] = await asyncio.to_thread(self.tracker.top_deltas, spike["window_start_ts"])
                 await asyncio.to_thread(self.history.log_spike, spike)
-                if self.settings.notifications_enabled:
+                # Game mode: a fullscreen foreground app auto-silences the OS
+                # toast regardless of the user's own notifications_enabled
+                # toggle, so a spike doesn't pop over a game or video. The
+                # tray tooltip still updates either way -- it's passive
+                # (hover-only), not an interruption.
+                if self.settings.notifications_enabled and not await asyncio.to_thread(is_foreground_fullscreen):
                     self.notifier.notify(spike)
-                    tray_state.notify_spike(spike)
+                tray_state.notify_spike(spike)
                 await self.manager.broadcast({"type": "spike", "data": spike})
 
             if tick["ts"] - self._last_prune > 3600:
