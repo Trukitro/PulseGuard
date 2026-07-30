@@ -3,6 +3,7 @@ import {
   fluentButton,
   fluentCard,
   fluentTextField,
+  fluentDivider,
   baseLayerLuminance,
   StandardLuminance,
 } from "../vendor/fluent-web-components.min.js";
@@ -13,7 +14,7 @@ import "./components/spike-chart.js";
 import "./components/process-list.js";
 import "./components/alert-toast.js";
 
-provideFluentDesignSystem().register(fluentButton(), fluentCard(), fluentTextField());
+provideFluentDesignSystem().register(fluentButton(), fluentCard(), fluentTextField(), fluentDivider());
 baseLayerLuminance.setValueFor(document.body, StandardLuminance.DarkMode);
 
 const ringRam = document.getElementById("ring-ram");
@@ -25,15 +26,26 @@ const toast = document.getElementById("toast");
 const settingsPanel = document.getElementById("settings-panel");
 const settingsToggle = document.getElementById("settings-toggle");
 const settingsSave = document.getElementById("settings-save");
-const fieldCeiling = document.getElementById("field-ceiling");
-const fieldDelta = document.getElementById("field-delta");
-const fieldPoll = document.getElementById("field-poll");
+
+// Maps a settings key to its field element, one entry per threshold this
+// panel edits. poll_interval_s is the one shared (non-per-resource) field.
+const FIELDS = {
+  ram_pct_ceiling: document.getElementById("field-ram-ceiling"),
+  ram_delta_gb: document.getElementById("field-ram-delta"),
+  cpu_pct_ceiling: document.getElementById("field-cpu-ceiling"),
+  cpu_delta_pct: document.getElementById("field-cpu-delta"),
+  gpu_pct_ceiling: document.getElementById("field-gpu-ceiling"),
+  gpu_delta_pct: document.getElementById("field-gpu-delta"),
+  poll_interval_s: document.getElementById("field-poll"),
+};
 
 let settingsCache = {
   ram_pct_ceiling: 90,
   ram_delta_gb: 2,
   cpu_pct_ceiling: 90,
   cpu_delta_pct: 40,
+  gpu_pct_ceiling: 90,
+  gpu_delta_pct: 40,
   window_s: 20,
   poll_interval_s: 2,
 };
@@ -43,20 +55,19 @@ async function loadSettings() {
   try {
     const res = await fetch("/api/settings");
     settingsCache = await res.json();
-    fieldCeiling.value = settingsCache.ram_pct_ceiling;
-    fieldDelta.value = settingsCache.ram_delta_gb;
-    fieldPoll.value = settingsCache.poll_interval_s;
+    for (const [key, field] of Object.entries(FIELDS)) {
+      field.value = settingsCache[key];
+    }
   } catch (err) {
     console.warn("settings fetch failed", err);
   }
 }
 
 async function saveSettings() {
-  const body = {
-    ram_pct_ceiling: Number(fieldCeiling.value),
-    ram_delta_gb: Number(fieldDelta.value),
-    poll_interval_s: Number(fieldPoll.value),
-  };
+  const body = {};
+  for (const key of Object.keys(FIELDS)) {
+    body[key] = Number(FIELDS[key].value);
+  }
   const res = await fetch("/api/settings", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -124,7 +135,11 @@ ws.addEventListener("tick", (event) => {
   });
 
   if (tick.gpu_pct != null) {
-    ringGpu.update({ pct: tick.gpu_pct, display: `${tick.gpu_pct.toFixed(0)}%` });
+    ringGpu.update({
+      pct: tick.gpu_pct,
+      display: `${tick.gpu_pct.toFixed(0)}%`,
+      state: metricState("gpu", tick.gpu_pct, settingsCache.gpu_pct_ceiling, nowMs),
+    });
   } else {
     ringGpu.update({ pct: 0, display: "n/a" });
   }

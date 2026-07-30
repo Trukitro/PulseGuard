@@ -42,12 +42,25 @@
       #settings-panel {
         display: flex;
         flex-direction: column;
-        gap: var(--pg-space-2);
-        max-width: 320px;
+        gap: var(--pg-space-3);
+        max-width: 340px;
         padding: var(--pg-space-3);
       }
       #settings-panel[hidden] {
         display: none;
+      }
+      #settings-panel h3 {
+        margin: 0;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--pg-text-dim);
+      }
+      #settings-panel .settings-group {
+        display: flex;
+        flex-direction: column;
+        gap: var(--pg-space-2);
       }
       #settings-panel label {
         display: flex;
@@ -65,14 +78,42 @@
     </header>
 
     <fluent-card id="settings-panel" hidden>
-      <label>
-        RAM ceiling (%)
-        <fluent-text-field id="field-ceiling" type="number"></fluent-text-field>
-      </label>
-      <label>
-        RAM delta threshold (GB)
-        <fluent-text-field id="field-delta" type="number"></fluent-text-field>
-      </label>
+      <div class="settings-group">
+        <h3>RAM</h3>
+        <label>
+          Ceiling (%)
+          <fluent-text-field id="field-ram-ceiling" type="number"></fluent-text-field>
+        </label>
+        <label>
+          Delta threshold (GB)
+          <fluent-text-field id="field-ram-delta" type="number"></fluent-text-field>
+        </label>
+      </div>
+      <fluent-divider></fluent-divider>
+      <div class="settings-group">
+        <h3>CPU</h3>
+        <label>
+          Ceiling (%)
+          <fluent-text-field id="field-cpu-ceiling" type="number"></fluent-text-field>
+        </label>
+        <label>
+          Delta threshold (points)
+          <fluent-text-field id="field-cpu-delta" type="number"></fluent-text-field>
+        </label>
+      </div>
+      <fluent-divider></fluent-divider>
+      <div class="settings-group">
+        <h3>GPU</h3>
+        <label>
+          Ceiling (%)
+          <fluent-text-field id="field-gpu-ceiling" type="number"></fluent-text-field>
+        </label>
+        <label>
+          Delta threshold (points)
+          <fluent-text-field id="field-gpu-delta" type="number"></fluent-text-field>
+        </label>
+      </div>
+      <fluent-divider></fluent-divider>
       <label>
         Poll interval (s)
         <fluent-text-field id="field-poll" type="number"></fluent-text-field>
@@ -87,7 +128,7 @@
     </section>
 
     <section class="pg-panel panel">
-      <h2>RAM timeline</h2>
+      <h2>Timeline</h2>
       <spike-chart id="chart"></spike-chart>
     </section>
 

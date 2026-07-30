@@ -57,6 +57,10 @@ const COLUMNS = {
     headers: ["Process", "PID", "CPU"],
     cells: (p) => [p.name, String(p.pid), `${p.cpu_pct.toFixed(1)}%`],
   },
+  gpu: {
+    headers: ["Process", "PID", "VRAM"],
+    cells: (p) => [p.name, String(p.pid), `${p.vram_gb.toFixed(2)} GB`],
+  },
   default: {
     headers: ["Process", "PID", "Delta", "Total"],
     cells: (p) => [p.name, String(p.pid), `+${p.delta_gb.toFixed(2)} GB`, `${p.total_gb.toFixed(2)} GB`],

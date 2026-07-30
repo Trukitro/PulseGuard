@@ -60,6 +60,8 @@ class SettingsUpdate(BaseModel):
     ram_delta_gb: Optional[float] = None
     cpu_pct_ceiling: Optional[float] = None
     cpu_delta_pct: Optional[float] = None
+    gpu_pct_ceiling: Optional[float] = None
+    gpu_delta_pct: Optional[float] = None
     window_s: Optional[int] = None
     poll_interval_s: Optional[float] = None
     autostart: Optional[bool] = None
@@ -86,6 +88,7 @@ class AppState:
         if self._task is not None:
             self._task.cancel()
         self.sampler.close()
+        self.tracker.close()
         self.history.close()
 
     def apply_settings(self, settings: Settings) -> None:
@@ -103,6 +106,8 @@ class AppState:
             for spike in self.detector.process(tick):
                 if spike["metric"] == "cpu":
                     spike["top"] = await asyncio.to_thread(self.tracker.top_cpu)
+                elif spike["metric"] == "gpu":
+                    spike["top"] = await asyncio.to_thread(self.tracker.top_gpu)
                 else:
                     spike["top"] = await asyncio.to_thread(self.tracker.top_deltas, spike["window_start_ts"])
                 await asyncio.to_thread(self.history.log_spike, spike)

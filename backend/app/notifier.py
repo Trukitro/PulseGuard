@@ -24,6 +24,10 @@ class Notifier:
             headline = f"{top[0]['name']} ({top[0]['cpu_pct']:.0f}%)" if top else "no single process stands out"
             unit = "%"
             title = "PulseGuard - CPU spike"
+        elif metric == "gpu":
+            headline = f"{top[0]['name']} ({top[0]['vram_gb']:.2f} GB VRAM)" if top else "no single process stands out"
+            unit = "%"
+            title = "PulseGuard - GPU spike"
         else:
             headline = f"{top[0]['name']} (+{top[0]['delta_gb']:.2f} GB)" if top else "no single process stands out"
             unit = " GB"

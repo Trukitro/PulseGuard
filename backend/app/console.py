@@ -73,6 +73,12 @@ def main() -> None:
                         f'{p["name"]} ({p["cpu_pct"]:.1f}%)' for p in spike["top"]
                     ) or "no per-process usage available"
                     unit = "%"
+                elif spike["metric"] == "gpu":
+                    spike["top"] = tracker.top_gpu()
+                    top_line = ", ".join(
+                        f'{p["name"]} ({p["vram_gb"]:.2f} GB VRAM)' for p in spike["top"]
+                    ) or "no per-process VRAM usage available"
+                    unit = "%"
                 else:
                     spike["top"] = tracker.top_deltas(spike["window_start_ts"])
                     top_line = ", ".join(
@@ -91,6 +97,7 @@ def main() -> None:
         print("\nStopping.")
     finally:
         sampler.close()
+        tracker.close()
         history.close()
 
 

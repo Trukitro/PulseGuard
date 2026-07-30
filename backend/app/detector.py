@@ -43,6 +43,12 @@ def _cpu_avg(tick: Tick) -> float:
     return sum(cpu_pct) / len(cpu_pct) if cpu_pct else 0.0
 
 
+def _gpu_pct(tick: Tick) -> float:
+    # 0.0 on machines with no NVIDIA GPU (sampler reports gpu_pct=None there),
+    # which keeps this metric a permanent no-op rather than a crash.
+    return tick["gpu_pct"] if tick["gpu_pct"] is not None else 0.0
+
+
 class _MetricDetector:
     """Flags a spike when either the absolute ceiling is breached or the
     delta-per-window threshold is crossed. A cooldown suppresses re-firing
@@ -114,6 +120,13 @@ class Detector:
                 settings.cpu_delta_pct,
                 window_value_fn=_cpu_avg,
             ),
+            _MetricDetector(
+                "gpu",
+                settings.window_s,
+                settings.gpu_pct_ceiling,
+                settings.gpu_delta_pct,
+                window_value_fn=_gpu_pct,
+            ),
         ]
 
     def update_settings(self, settings: Settings) -> None:
@@ -127,6 +140,9 @@ class Detector:
             elif m.metric == "cpu":
                 m.ceiling = settings.cpu_pct_ceiling
                 m.delta = settings.cpu_delta_pct
+            elif m.metric == "gpu":
+                m.ceiling = settings.gpu_pct_ceiling
+                m.delta = settings.gpu_delta_pct
 
     def process(self, tick: Tick) -> list[Spike]:
         spikes = []

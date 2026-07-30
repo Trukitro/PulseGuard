@@ -1,8 +1,9 @@
-"""Tracks per-process RSS and CPU usage over time so a spike can be
-attributed to a process. RAM attribution is a delta (what grew since the
-spike's window start); CPU attribution is a live ranking, since psutil's
-per-process cpu_percent() is already a rate since the last sample -- there's
-no separate "baseline" to diff against."""
+"""Tracks per-process RSS, CPU usage, and GPU VRAM over time so a spike can be
+attributed to a process. RAM/GPU attribution is a delta or live ranking by
+memory (VRAM); CPU attribution is a live ranking by psutil's per-process
+cpu_percent() (a rate since the last sample -- there's no separate "baseline"
+to diff against). NVML has no per-process GPU *utilization* API, only
+per-process memory, so GPU attribution is VRAM-based rather than %-based."""
 
 from __future__ import annotations
 
@@ -23,6 +24,12 @@ class ProcessCpuUsage(TypedDict):
     cpu_pct: float
 
 
+class ProcessGpuUsage(TypedDict):
+    name: str
+    pid: int
+    vram_gb: float
+
+
 class ProcessTracker:
     def __init__(self, history_s: float = 120.0) -> None:
         import psutil
@@ -31,6 +38,18 @@ class ProcessTracker:
         self.history_s = history_s
         self._snapshots: deque[tuple[float, dict[int, tuple[str, int]]]] = deque()
         self._latest_cpu: dict[int, tuple[str, float]] = {}
+
+        self._nvml = None
+        self._gpu_handle = None
+        try:
+            import pynvml
+
+            pynvml.nvmlInit()
+            self._nvml = pynvml
+            self._gpu_handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+        except Exception:
+            self._nvml = None
+            self._gpu_handle = None
 
     def snapshot(self, ts: float) -> None:
         psutil = self._psutil
@@ -93,3 +112,30 @@ class ProcessTracker:
         ]
         usage.sort(key=lambda d: d["cpu_pct"], reverse=True)
         return usage[:top_n]
+
+    def top_gpu(self, top_n: int = 5) -> list[ProcessGpuUsage]:
+        if self._nvml is None or self._gpu_handle is None:
+            return []
+        try:
+            gpu_procs = self._nvml.nvmlDeviceGetComputeRunningProcesses(self._gpu_handle)
+        except Exception:
+            return []
+
+        usage: list[ProcessGpuUsage] = []
+        for p in gpu_procs:
+            used = p.usedGpuMemory or 0
+            try:
+                name = self._psutil.Process(p.pid).name()
+            except (self._psutil.NoSuchProcess, self._psutil.AccessDenied):
+                name = "?"
+            usage.append({"name": name, "pid": p.pid, "vram_gb": round(used / (1024**3), 3)})
+
+        usage.sort(key=lambda d: d["vram_gb"], reverse=True)
+        return usage[:top_n]
+
+    def close(self) -> None:
+        if self._nvml is not None:
+            try:
+                self._nvml.nvmlShutdown()
+            except Exception:
+                pass

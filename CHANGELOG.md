@@ -3,6 +3,29 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.0] - 2026-07-30
+
+### Added
+- GPU spike detection: detector.py tracks GPU utilization (`gpu_pct`) the
+  same way it tracks CPU, with its own rolling window/cooldown/ceiling/delta.
+  On machines without an NVIDIA GPU this metric is a permanent no-op
+  (gpu_pct is treated as 0).
+- GPU spike attribution is by per-process VRAM usage via NVML
+  (`nvmlDeviceGetComputeRunningProcesses`), not utilization -- NVIDIA doesn't
+  expose per-process GPU utilization, only per-process memory.
+- Settings panel now has individual RAM/CPU/GPU sections (ceiling + delta
+  threshold each), instead of only exposing RAM. CPU's fields existed in the
+  backend since v0.3.0 but weren't reachable from the UI until now.
+- process-list, alert-toast now render a GPU-specific VRAM column/message.
+
+Verified: the real NVML per-process query runs cleanly against this
+machine's actual NVIDIA GPU; the settings panel loads/saves all seven
+fields (RAM/CPU/GPU ceiling+delta plus poll interval) round-trip correctly
+through the REST API; and the full GPU-spike rendering path (process-list,
+toast, chart) was verified live in a browser via the same component methods
+the WS handler calls, plus GPU is selectable and switches the chart like
+RAM/CPU already did.
+
 ## [0.3.0] - 2026-07-30
 
 ### Added

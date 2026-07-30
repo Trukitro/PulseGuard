@@ -56,6 +56,12 @@ const TEMPLATE = `
 
 const METRIC_LABELS = { ram: "RAM", cpu: "CPU", gpu: "GPU" };
 
+const ATTRIBUTION = {
+  cpu: (top) => `${top.name} (${top.cpu_pct.toFixed(1)}%)`,
+  gpu: (top) => `${top.name} (${top.vram_gb.toFixed(2)} GB VRAM)`,
+  default: (top) => `${top.name} +${top.delta_gb.toFixed(2)} GB`,
+};
+
 export class AlertToast extends HTMLElement {
   connectedCallback() {
     if (this._built) return;
@@ -68,11 +74,8 @@ export class AlertToast extends HTMLElement {
 
   show(spike, durationMs = 6000) {
     const top = spike.top?.[0];
-    const unit = spike.metric === "cpu" ? "%" : " GB";
-    const attribution =
-      spike.metric === "cpu"
-        ? top && `${top.name} (${top.cpu_pct.toFixed(1)}%)`
-        : top && `${top.name} +${top.delta_gb.toFixed(2)} GB`;
+    const unit = spike.metric === "cpu" || spike.metric === "gpu" ? "%" : " GB";
+    const attribution = top && (ATTRIBUTION[spike.metric] || ATTRIBUTION.default)(top);
 
     this._title.textContent = `${METRIC_LABELS[spike.metric] || spike.metric} spike detected`;
     this._body.textContent =
