@@ -1,0 +1,6 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+psutil>=5.9
+nvidia-ml-py>=12.535
+winotify>=1.1
+pywebview>=5.1

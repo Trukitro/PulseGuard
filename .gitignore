@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Build artifacts
+backend/build/
+backend/dist/
+*.spec.bak
+
+# PyInstaller
+*.manifest
+
+# SQLite data
+*.db
+*.db-journal
+backend/data/
+
+# Settings (per-machine, not source)
+settings.json
+
+# Inno Setup output
+installer/Output/
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+
+# Source design files (canonical copies live in assets/)
+/images/
+
+# Node (vendor is checked in manually, no npm at build time)
+node_modules/

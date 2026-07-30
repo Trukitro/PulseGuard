@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <!-- Background Gradient for a subtle Fluent 2 depth -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#151A24" />
+      <stop offset="100%" stop-color="#0B0E14" />
+    </linearGradient>
+    
+    <!-- Red glow for the active spike detection -->
+    <filter id="spikeGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Base App Background (Near-black / Windows 11 Rounded Square) -->
+  <rect width="256" height="256" rx="56" fill="url(#bgGrad)" />
+  
+  <!-- Subtle inner border for the acrylic feel -->
+  <rect width="252" height="252" x="2" y="2" rx="54" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2" />
+
+  <!-- Outer Ring (CPU) - Fluent Blue -->
+  <circle cx="128" cy="128" r="84" fill="none" stroke="#2899F5" stroke-width="12" stroke-linecap="round" stroke-dasharray="380 147" transform="rotate(135 128 128)" />
+
+  <!-- Middle Ring (RAM) - Amber Warning -->
+  <circle cx="128" cy="128" r="60" fill="none" stroke="#FFB900" stroke-width="12" stroke-linecap="round" stroke-dasharray="220 156" transform="rotate(90 128 128)" />
+
+  <!-- Inner Ring (GPU) - Red Spike / Active -->
+  <circle cx="128" cy="128" r="36" fill="none" stroke="#E81123" stroke-width="12" stroke-linecap="round" stroke-dasharray="120 106" transform="rotate(45 128 128)" filter="url(#spikeGlow)" />
+
+  <!-- The "Pulse" Line intersecting the rings -->
+  <path d="M 90 128 L 106 128 L 118 96 L 138 160 L 150 128 L 166 128" fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+</svg>
