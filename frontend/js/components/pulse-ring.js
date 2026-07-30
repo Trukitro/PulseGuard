@@ -11,8 +11,8 @@ const TEMPLATE = `
     border-radius: 16px;
     padding: 8px;
     transition: background 0.2s ease;
-    --ring-color: var(--pg-accent, #2899f5);
-    --ring-glow: var(--pg-accent-glow, rgba(40,153,245,0.55));
+    --ring-color: var(--pg-good, #6ccb5f);
+    --ring-glow: var(--pg-good-glow, rgba(108,203,95,0.55));
   }
   :host(:hover) {
     background: rgba(255, 255, 255, 0.04);
@@ -79,6 +79,16 @@ const TEMPLATE = `
     font-size: 18px;
     color: var(--pg-text, #eef1f7);
   }
+  .secondary {
+    font-family: var(--pg-font-mono, monospace);
+    font-variant-numeric: tabular-nums;
+    font-size: 11px;
+    color: var(--pg-text-dim, #9aa4b8);
+    margin-top: 2px;
+  }
+  .secondary:empty {
+    display: none;
+  }
   .label {
     font-size: 11px;
     letter-spacing: 0.08em;
@@ -94,6 +104,7 @@ const TEMPLATE = `
   </svg>
   <div class="center">
     <span class="value">--</span>
+    <span class="secondary"></span>
   </div>
 </div>
 <span class="label"></span>
@@ -111,6 +122,7 @@ export class PulseRing extends HTMLElement {
     root.innerHTML = TEMPLATE;
     this._progress = root.querySelector(".progress");
     this._value = root.querySelector(".value");
+    this._secondary = root.querySelector(".secondary");
     this._labelEl = root.querySelector(".label");
     this._labelEl.textContent = this.getAttribute("label") || "";
 
@@ -131,13 +143,14 @@ export class PulseRing extends HTMLElement {
     }
   }
 
-  /** @param {{ pct: number, display: string, state?: "normal"|"warning"|"spike" }} data */
-  update({ pct, display, state = "normal" }) {
+  /** @param {{ pct: number, display: string, secondary?: string, state?: "normal"|"warning"|"spike" }} data */
+  update({ pct, display, secondary = "", state = "normal" }) {
     const clamped = Math.max(0, Math.min(100, pct));
     if (this._progress) {
       this._progress.setAttribute("stroke-dashoffset", String(CIRCUMFERENCE * (1 - clamped / 100)));
     }
     if (this._value) this._value.textContent = display;
+    if (this._secondary) this._secondary.textContent = secondary;
     this.setAttribute("state", state);
   }
 

@@ -32,6 +32,12 @@ class Settings:
     autostart: bool = False
     retention_days: int = 30
     chart_retention_minutes: int = 60
+    # Ring color thresholds, shared across RAM/CPU/GPU (not per-resource, to
+    # avoid settings sprawl): green below warning_ratio * ceiling, amber from
+    # there up to (ceiling - danger_margin_pct), red from there to ceiling
+    # and beyond -- proactively, not only when an actual spike is firing.
+    color_warning_ratio: float = 0.5
+    color_danger_margin_pct: float = 12.0
     port: int = 8731
 
 

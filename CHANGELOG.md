@@ -3,6 +3,31 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.18.0] - 2026-07-30
+
+### Changed
+- Ring color scheme is now a proactive traffic-light model instead of only
+  reacting to an actual detected spike: green below a configurable warning
+  ratio of ceiling (default 50%), amber from there up to the danger margin,
+  red within a configurable number of percentage points of ceiling (default
+  12) -- or still red for an actual spike's full window regardless. New
+  shared settings (not per-resource, to avoid sprawl): "Warning past (% of
+  ceiling)" and "Red within (points of ceiling)".
+- Normal-state ring color changed from blue to green (new `--pg-good` token)
+  to match the traffic-light convention the new thresholds imply.
+- RAM and GPU rings now show both the percentage (primary) and the absolute
+  amount (secondary, smaller text) -- e.g. "63%" over "20.1 GB" -- so it's
+  clear how close a %-based ceiling is without doing mental math against
+  total system RAM/VRAM. CPU is unchanged (no natural absolute unit).
+
+Verified live with real data: ring colors and thresholds behave correctly
+against actual RAM/CPU/GPU readings, the settings round-trip (including the
+one field that converts between a stored fraction and a displayed percent)
+works both via REST and in the browser, and the green default color was
+confirmed via computed style (`rgb(108, 203, 95)`, matching `--pg-good`
+exactly). pulse-ring's secondary-display logic additionally verified in an
+isolated test.
+
 ## [0.17.0] - 2026-07-30
 
 ### Added

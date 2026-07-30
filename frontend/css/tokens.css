@@ -8,10 +8,12 @@
   --pg-text-dim: #9aa4b8;
 
   --pg-accent: #2899f5;
+  --pg-good: #6ccb5f;
   --pg-warn: #ffb900;
   --pg-danger: #e81123;
 
   --pg-accent-glow: rgba(40, 153, 245, 0.55);
+  --pg-good-glow: rgba(108, 203, 95, 0.55);
   --pg-warn-glow: rgba(255, 185, 0, 0.55);
   --pg-danger-glow: rgba(232, 17, 35, 0.6);
 

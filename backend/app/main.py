@@ -70,6 +70,8 @@ class SettingsUpdate(BaseModel):
     autostart: Optional[bool] = None
     retention_days: Optional[int] = None
     chart_retention_minutes: Optional[int] = None
+    color_warning_ratio: Optional[float] = None
+    color_danger_margin_pct: Optional[float] = None
     port: Optional[int] = None
 
 

@@ -89,6 +89,7 @@ const FIELDS = {
   gpu_delta_pct: document.getElementById("field-gpu-delta"),
   poll_interval_s: document.getElementById("field-poll"),
   chart_retention_minutes: document.getElementById("field-chart-retention"),
+  color_danger_margin_pct: document.getElementById("field-color-danger"),
 };
 
 // Boolean settings, bound via fluent-switch's .checked rather than .value.
@@ -96,6 +97,11 @@ const SWITCH_FIELDS = {
   notifications_enabled: document.getElementById("field-notifications"),
   autostart: document.getElementById("field-autostart"),
 };
+
+// color_warning_ratio is stored as a fraction (0.5) but shown as a percent
+// (50) -- the one field that needs unit conversion, so it's kept out of the
+// generic FIELDS map rather than special-casing that map's loop.
+const colorWarningField = document.getElementById("field-color-warning");
 
 let settingsCache = {
   ram_pct_ceiling: 90,
@@ -109,6 +115,8 @@ let settingsCache = {
   notifications_enabled: true,
   autostart: false,
   chart_retention_minutes: 60,
+  color_warning_ratio: 0.5,
+  color_danger_margin_pct: 12,
 };
 const spikeActiveUntilMs = { ram: 0, cpu: 0, gpu: 0 };
 
@@ -122,6 +130,7 @@ async function loadSettings() {
     for (const [key, field] of Object.entries(SWITCH_FIELDS)) {
       field.checked = settingsCache[key];
     }
+    colorWarningField.value = Math.round(settingsCache.color_warning_ratio * 100);
     chart.setRetention(settingsCache.chart_retention_minutes, settingsCache.poll_interval_s);
     liveIndicator.title = `Refreshing every ${settingsCache.poll_interval_s}s`;
   } catch (err) {
@@ -137,6 +146,7 @@ async function saveSettings() {
   for (const key of Object.keys(SWITCH_FIELDS)) {
     body[key] = SWITCH_FIELDS[key].checked;
   }
+  body.color_warning_ratio = Number(colorWarningField.value) / 100;
   const res = await fetch("/api/settings", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -166,7 +176,8 @@ function applyTick(tick) {
 
   ringRam.update({
     pct: tick.ram_pct,
-    display: `${tick.ram_gb.toFixed(1)} GB`,
+    display: `${tick.ram_pct.toFixed(0)}%`,
+    secondary: `${tick.ram_gb.toFixed(1)} GB`,
     state: metricState("ram", tick.ram_pct, settingsCache.ram_pct_ceiling, nowMs),
   });
 
@@ -181,6 +192,7 @@ function applyTick(tick) {
     ringGpu.update({
       pct: tick.gpu_pct,
       display: `${tick.gpu_pct.toFixed(0)}%`,
+      secondary: tick.vram_gb != null ? `${tick.vram_gb.toFixed(1)} GB` : "",
       state: metricState("gpu", tick.gpu_pct, settingsCache.gpu_pct_ceiling, nowMs),
     });
   } else {
@@ -220,9 +232,17 @@ function catchUp() {
   backfill();
 }
 
+// Proactive traffic-light coloring based on proximity to the configured
+// ceiling -- not just whether an actual spike is currently firing. An actual
+// detected spike still forces red for its full window regardless of these
+// thresholds (metricState is called every tick, so it'd naturally read as
+// red anyway near-ceiling, but this guarantees it during the spike's cooldown
+// even if the value has since dipped back down).
 function metricState(metric, value, ceiling, nowMs) {
   if (nowMs < spikeActiveUntilMs[metric]) return "spike";
-  if (ceiling != null && value >= ceiling * 0.9) return "warning";
+  if (ceiling == null) return "normal";
+  if (value >= ceiling - settingsCache.color_danger_margin_pct) return "spike";
+  if (value >= ceiling * settingsCache.color_warning_ratio) return "warning";
   return "normal";
 }
 
