@@ -3,6 +3,27 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.12.0] - 2026-07-30
+
+### Added
+- Mini-widget mode: a "Mini mode" button collapses the app into a small
+  (480x200), frameless, always-on-top floating window showing just the
+  three rings, for passive monitoring. A small restore button (top-right,
+  visible only in mini mode) returns to the full maximized main window.
+  Implemented as a second pre-created (hidden) pywebview window loading the
+  same page with `?mode=mini`, toggled via show()/hide() rather than
+  created on demand -- creating a new window after `webview.start()` has
+  begun is less predictable across pywebview's backends than toggling one
+  that already exists. Alt+F4 on the frameless mini widget restores the
+  main window rather than losing it entirely.
+
+Verified: the `?mode=mini` page correctly hides everything but the ring
+cluster and shows the restore button; both buttons correctly call the
+pywebview bridge (and gracefully warn instead of erroring in a plain
+dev-mode browser tab with no bridge); and an isolated two-window test
+confirmed pywebview's hidden/frameless/on_top creation plus show()/hide()
+toggling runs without error end to end.
+
 ## [0.11.0] - 2026-07-30
 
 ### Added

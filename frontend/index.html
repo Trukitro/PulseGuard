@@ -70,6 +70,41 @@
         gap: var(--pg-space-5);
         padding: var(--pg-space-4);
       }
+      #mini-restore {
+        display: none;
+        position: fixed;
+        top: 6px;
+        right: 6px;
+        z-index: 1000;
+        width: 22px;
+        height: 22px;
+        padding: 0;
+        border: 1px solid var(--pg-panel-border);
+        border-radius: 6px;
+        background: var(--pg-panel-bg);
+        color: var(--pg-text-dim);
+        cursor: pointer;
+        font-size: 12px;
+        line-height: 1;
+      }
+      body.mini-mode {
+        padding: 0;
+        gap: 0;
+        background: transparent;
+      }
+      body.mini-mode header,
+      body.mini-mode #settings-panel,
+      body.mini-mode .panel,
+      body.mini-mode alert-toast {
+        display: none !important;
+      }
+      body.mini-mode .ring-cluster {
+        padding: var(--pg-space-3);
+        border-radius: var(--pg-radius);
+      }
+      body.mini-mode #mini-restore {
+        display: block;
+      }
       .panel {
         padding: var(--pg-space-3);
       }
@@ -154,9 +189,12 @@
           <span class="dot"></span>
           <span class="label">Connecting...</span>
         </div>
+        <fluent-button id="mini-mode-toggle" appearance="outline">Mini mode</fluent-button>
         <fluent-button id="settings-toggle" appearance="outline">Settings</fluent-button>
       </div>
     </header>
+
+    <button id="mini-restore" title="Restore PulseGuard">&#10530;</button>
 
     <div id="settings-panel" hidden>
       <fluent-card class="settings-group">

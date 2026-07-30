@@ -98,13 +98,28 @@ def _format_spike_summary(spike: dict) -> str:
 
 
 class JsApi:
-    """Bridge for frontend/js/nav-guard.js's explicit, opt-in external links --
-    the only sanctioned way anything in this app reaches the user's real
-    default browser."""
+    """Bridge exposed to the page as window.pywebview.api. Each window gets
+    its own instance wired to only the transitions it should trigger: the
+    main window's page can enter mini mode, the mini widget's page can exit
+    it back to the main window."""
+
+    def __init__(self, enter_mini=None, exit_mini=None) -> None:
+        self._enter_mini = enter_mini
+        self._exit_mini = exit_mini
 
     def open_external(self, url: str) -> None:
+        """The one sanctioned way anything in this app reaches the user's
+        real default browser -- explicit, opt-in links via nav-guard.js."""
         if url.startswith(("http://", "https://")):
             webbrowser.open(url)
+
+    def enter_mini_mode(self) -> None:
+        if self._enter_mini:
+            self._enter_mini()
+
+    def exit_mini_mode(self) -> None:
+        if self._exit_mini:
+            self._exit_mini()
 
 
 def main() -> None:
@@ -123,10 +138,19 @@ def main() -> None:
         print("PulseGuard backend failed to start", file=sys.stderr)
         sys.exit(1)
 
+    def _enter_mini_mode() -> None:
+        window.hide()
+        mini_window.show()
+
+    def _exit_mini_mode() -> None:
+        mini_window.hide()
+        window.show()
+        window.restore()
+
     window = webview.create_window(
         title=APP_TITLE,
         url=f"http://127.0.0.1:{port}",
-        js_api=JsApi(),
+        js_api=JsApi(enter_mini=_enter_mini_mode),
         width=1280,
         height=860,
         min_size=(960, 640),
@@ -134,9 +158,28 @@ def main() -> None:
         maximized=True,
     )
 
+    # Pre-created hidden rather than created on demand: pywebview's behavior
+    # for creating a new window after webview.start() has begun is less
+    # predictable across backends than toggling show()/hide() on a window
+    # that already exists.
+    mini_window = webview.create_window(
+        title="PulseGuard Mini",
+        url=f"http://127.0.0.1:{port}/?mode=mini",
+        js_api=JsApi(exit_mini=_exit_mini_mode),
+        width=480,
+        height=200,
+        resizable=False,
+        frameless=True,
+        easy_drag=True,
+        on_top=True,
+        hidden=True,
+        background_color="#0B0E14",
+    )
+
     exiting = False
 
     def _open_from_tray() -> None:
+        mini_window.hide()
         window.show()
         window.restore()
         window.maximize()
@@ -145,6 +188,7 @@ def main() -> None:
         nonlocal exiting
         exiting = True
         tray_icon.stop()
+        mini_window.destroy()
         window.destroy()
 
     tray_icon = TrayIcon(on_open=_open_from_tray, on_exit=_exit_from_tray)
@@ -165,6 +209,17 @@ def main() -> None:
         return False
 
     window.events.closing += _on_closing
+
+    def _on_mini_closing() -> bool:
+        # Frameless windows have no visible close button, but Alt+F4 (or
+        # similar) can still send a close signal -- treat it the same as the
+        # widget's own restore button rather than losing the window entirely.
+        if exiting:
+            return True
+        _exit_mini_mode()
+        return False
+
+    mini_window.events.closing += _on_mini_closing
 
     # pywebview's `icon` start() param only does anything on the GTK/QT backends;
     # on Windows the window/taskbar icon comes from the exe's own icon resource,

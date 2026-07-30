@@ -36,6 +36,28 @@ const settingsSave = document.getElementById("settings-save");
 const liveIndicator = document.getElementById("live-indicator");
 const liveLabel = liveIndicator.querySelector(".label");
 const combinedToggle = document.getElementById("combined-toggle");
+const miniModeToggle = document.getElementById("mini-mode-toggle");
+const miniRestore = document.getElementById("mini-restore");
+
+if (new URLSearchParams(location.search).get("mode") === "mini") {
+  document.body.classList.add("mini-mode");
+}
+
+miniModeToggle.addEventListener("click", () => {
+  if (window.pywebview?.api?.enter_mini_mode) {
+    window.pywebview.api.enter_mini_mode();
+  } else {
+    console.warn("[mini-mode] no pywebview bridge available (dev-mode browser tab)");
+  }
+});
+
+miniRestore.addEventListener("click", () => {
+  if (window.pywebview?.api?.exit_mini_mode) {
+    window.pywebview.api.exit_mini_mode();
+  } else {
+    console.warn("[mini-mode] no pywebview bridge available (dev-mode browser tab)");
+  }
+});
 
 // Maps a settings key to its field element, one entry per threshold this
 // panel edits. poll_interval_s is the one shared (non-per-resource) field.
