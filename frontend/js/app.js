@@ -249,10 +249,15 @@ async function backfill() {
 }
 
 let lastCatchUpAt = 0;
-function catchUp() {
-  if (document.visibilityState !== "visible") return;
+// force=true bypasses both the visibility check and the debounce -- used by
+// the manual Reconnect button, since document.visibilityState can read
+// "hidden" in pywebview's WebView2 in cases that don't match the user's own
+// sense of whether the window is visible (an explicit click means they want
+// it to try regardless of what that check says).
+function catchUp(force = false) {
+  if (!force && document.visibilityState !== "visible") return;
   const now = Date.now();
-  if (now - lastCatchUpAt < 2000) return; // debounce rapid focus/visibility events
+  if (!force && now - lastCatchUpAt < 2000) return; // debounce rapid focus/visibility events
   lastCatchUpAt = now;
   backfill();
 }
@@ -366,10 +371,27 @@ reconnectBtn.addEventListener("click", () => {
   reconnectBtn.disabled = true;
   liveLabel.textContent = "Reconnecting...";
   ws.reconnectNow();
+  catchUp(true); // don't wait on the WS "open" handler to chain into this -- fetch fresh data right away too
   setTimeout(() => {
     reconnectBtn.disabled = false;
   }, 1500);
 });
+
+// Self-healing watchdog: reconnecting/catching-up only on visibilitychange
+// or focus events assumes those fire reliably for a minimized-then-restored
+// native window, which isn't guaranteed across every pywebview/WebView2
+// version. This periodic check is a safety net that doesn't depend on any
+// single transition event -- if the window is visible but data has gone
+// meaningfully stale, force a reconnect regardless of how it got that way.
+setInterval(() => {
+  if (document.visibilityState !== "visible") return;
+  const ageS = lastTickTs ? Date.now() / 1000 - lastTickTs : Infinity;
+  const staleAfterS = Math.max(settingsCache.poll_interval_s * 3, 6);
+  if (ageS > staleAfterS * 2) {
+    ws.reconnectNow();
+    catchUp(true);
+  }
+}, 5000);
 
 ws.addEventListener("open", () => {
   wsConnected = true;
@@ -484,6 +506,10 @@ settingsSave.addEventListener("click", () => {
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") catchUp();
 });
-window.addEventListener("focus", catchUp);
+// Not `window.addEventListener("focus", catchUp)` directly -- that would pass
+// the FocusEvent through as catchUp's `force` parameter, and since an Event
+// object is truthy, it would silently bypass the visibility/debounce guards
+// on every focus event.
+window.addEventListener("focus", () => catchUp());
 
 loadSettings().then(backfill);

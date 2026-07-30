@@ -3,6 +3,41 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.23.0] - 2026-07-30
+
+### Fixed
+- Clicking Reconnect while Stale/Disconnected did nothing in the real
+  packaged app. Root cause: `catchUp()` was gated by
+  `document.visibilityState`, which can read "hidden" in pywebview's
+  WebView2 even when the window is genuinely visible/foreground -- a
+  mismatch between what the API reports and what the user can plainly see.
+  `catchUp(force)` now lets the manual Reconnect button bypass that check
+  (and the debounce) entirely.
+- Along the way, found and fixed a real bug introduced by that same change:
+  `window.addEventListener("focus", catchUp)` passed the FocusEvent object
+  through as catchUp's `force` parameter, and since an Event object is
+  truthy, it silently bypassed the visibility/debounce guards on every
+  focus event -- defeating their purpose for the automatic listener path.
+  Fixed by wrapping it in `() => catchUp()`.
+
+### Added
+- Self-healing watchdog: every 5s while the page is visible, if data has
+  gone meaningfully stale, force a reconnect + catch-up regardless of
+  whether any visibilitychange/focus event fired -- not every pywebview/
+  WebView2 version is guaranteed to deliver those transitions reliably for
+  a minimized-then-restored native window. This is what makes monitoring
+  "siempre live y constante": the backend's sampling loop already never
+  stops recording regardless of GUI state (it's an independent asyncio
+  task, unaffected by whether the window is visible), and now the frontend
+  reliably catches back up instead of depending on a single event or a
+  single manual click succeeding.
+
+Verified: with `document.visibilityState` mocked to "hidden", the
+automatic focus listener now correctly stays blocked (confirming the
+Event-as-force bug is fixed), while the manual Reconnect button correctly
+still fetches immediately regardless (confirming the intended bypass
+works).
+
 ## [0.22.0] - 2026-07-30
 
 ### Changed
