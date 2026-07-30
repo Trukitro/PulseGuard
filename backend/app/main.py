@@ -142,6 +142,16 @@ class AppState:
 state = AppState()
 
 
+def _toggle_notifications() -> None:
+    state.apply_settings(replace(state.settings, notifications_enabled=not state.settings.notifications_enabled))
+
+
+tray_state.set_notifications_control(
+    toggle_cb=_toggle_notifications,
+    enabled_cb=lambda: state.settings.notifications_enabled,
+)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await state.start()

@@ -3,6 +3,23 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.19.0] - 2026-07-30
+
+### Added
+- Tray menu gained a checkable "Notifications" item that flips the same
+  notifications_enabled setting the web UI's toggle controls, without
+  tray.py depending on main.py's AppState directly -- routed through
+  tray_state.py's existing decoupling pattern (the same one that lets the
+  spike listener reach the tray icon). A "Force RAM cleanup" action was
+  considered and deliberately dropped: on modern Windows the OS already
+  manages memory well, and forcing a trim has limited real value and can
+  cause temporary extra paging.
+
+Verified against the real pystray classes (not just a mock): instantiating
+the actual TrayIcon and invoking the real MenuItem's callable toggles
+notifications_enabled and its `checked` property reflects the new state
+correctly, staying in sync with main.state.settings across repeated toggles.
+
 ## [0.18.0] - 2026-07-30
 
 ### Changed

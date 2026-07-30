@@ -11,6 +11,7 @@ from typing import Callable, Optional
 import pystray
 from PIL import Image
 
+from . import tray_state
 from .paths import ICON_PATH
 
 _RUNNING_TITLE = "PulseGuard - running"
@@ -33,6 +34,11 @@ class TrayIcon:
             title=_RUNNING_TITLE,
             menu=pystray.Menu(
                 pystray.MenuItem("Open PulseGuard", lambda: on_open(), default=True),
+                pystray.MenuItem(
+                    "Notifications",
+                    lambda: tray_state.toggle_notifications(),
+                    checked=lambda _item: tray_state.notifications_enabled(),
+                ),
                 pystray.MenuItem("Exit", lambda: on_exit()),
             ),
         )
