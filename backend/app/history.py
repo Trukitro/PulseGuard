@@ -36,7 +36,9 @@ CREATE TABLE IF NOT EXISTS spikes (
 
 class History:
     def __init__(self, db_path: Path = DB_PATH) -> None:
-        self._conn = sqlite3.connect(db_path)
+        # check_same_thread=False: callers dispatch each method via asyncio.to_thread,
+        # which can land on a different worker thread per call; access is never concurrent.
+        self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
 

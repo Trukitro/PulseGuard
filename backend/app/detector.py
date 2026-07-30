@@ -46,6 +46,10 @@ class Detector:
         self._ram_window = _RollingWindow(settings.window_s)
         self._cooldown_until: float = 0.0
 
+    def update_settings(self, settings: Settings) -> None:
+        self.settings = settings
+        self._ram_window.window_s = settings.window_s
+
     def process(self, tick: Tick) -> Optional[Spike]:
         ts = tick["ts"]
         self._ram_window.add(ts, tick["ram_gb"])
