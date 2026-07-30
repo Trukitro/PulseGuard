@@ -86,6 +86,14 @@ export class AlertToast extends HTMLElement {
     this.setAttribute("open", "");
     this._hideTimer = setTimeout(() => this.removeAttribute("open"), durationMs);
   }
+
+  showCustom(title, body, durationMs = 6000) {
+    this._title.textContent = title;
+    this._body.textContent = body;
+    clearTimeout(this._hideTimer);
+    this.setAttribute("open", "");
+    this._hideTimer = setTimeout(() => this.removeAttribute("open"), durationMs);
+  }
 }
 
 customElements.define("alert-toast", AlertToast);

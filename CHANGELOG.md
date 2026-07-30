@@ -3,6 +3,23 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.25.0] - 2026-07-30
+
+### Added
+- Custom trigger alarms (frontend): a new "Triggers" card in Settings lets
+  you define your own absolute-value alarms -- pick a metric (RAM in GB, or
+  CPU/GPU in %), a threshold, and how often (in minutes) to keep reminding
+  you while the value stays at or above it. Add/remove triggers freely;
+  they persist through the existing Settings save/load round-trip.
+- Each trigger has a "View top consumers" link that closes Settings,
+  switches the ring/timeline selection to that trigger's metric, turns on
+  the process panel's Live view, and scrolls it into view -- so you can
+  immediately see what's actually using the resource that just alarmed.
+- Trigger alerts now show as a toast (reusing the existing alert-toast
+  component via a new generic `showCustom()`) and pulse the corresponding
+  ring, the same visual language as spike detection.
+- Help panel documents the new Triggers feature.
+
 ## [0.24.0] - 2026-07-30
 
 ### Added

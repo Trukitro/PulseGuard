@@ -54,6 +54,8 @@ const historySpikesEmpty = document.getElementById("history-spikes-empty");
 const helpToggle = document.getElementById("help-toggle");
 const helpPanel = document.getElementById("help-panel");
 const drawerBackdrop = document.getElementById("drawer-backdrop");
+const triggersList = document.getElementById("triggers-list");
+const triggerAddBtn = document.getElementById("trigger-add");
 
 const DRAWERS = [helpPanel, historyPanel];
 
@@ -142,8 +144,107 @@ let settingsCache = {
   chart_retention_minutes: 60,
   color_warning_ratio: 0.5,
   color_danger_margin_pct: 12,
+  triggers: [],
 };
 const spikeActiveUntilMs = { ram: 0, cpu: 0, gpu: 0 };
+
+const TRIGGER_METRIC_UNIT = { ram: "GB", cpu: "%", gpu: "%" };
+
+function createTriggerRow(trigger) {
+  const row = document.createElement("div");
+  row.className = "trigger-row";
+  row.dataset.id = trigger.id || crypto.randomUUID();
+
+  const top = document.createElement("div");
+  top.className = "trigger-row-top";
+
+  const metricSelect = document.createElement("select");
+  metricSelect.className = "trigger-metric";
+  for (const [value, label] of Object.entries({ ram: "RAM (GB)", cpu: "CPU (%)", gpu: "GPU (%)" })) {
+    const opt = document.createElement("option");
+    opt.value = value;
+    opt.textContent = label;
+    metricSelect.appendChild(opt);
+  }
+  metricSelect.value = trigger.metric || "ram";
+
+  const enabledSwitch = document.createElement("fluent-switch");
+  enabledSwitch.className = "trigger-enabled";
+  enabledSwitch.checked = trigger.enabled !== false;
+
+  const removeBtn = document.createElement("button");
+  removeBtn.type = "button";
+  removeBtn.className = "trigger-remove";
+  removeBtn.title = "Remove trigger";
+  removeBtn.textContent = "×";
+  removeBtn.addEventListener("click", () => row.remove());
+
+  top.append(metricSelect, enabledSwitch, removeBtn);
+
+  const thresholdLabel = document.createElement("label");
+  const thresholdUnit = document.createElement("span");
+  thresholdUnit.className = "trigger-threshold-unit";
+  const setThresholdLabel = () => {
+    thresholdLabel.firstChild.textContent = `Alert at (${TRIGGER_METRIC_UNIT[metricSelect.value]})`;
+  };
+  thresholdLabel.append(document.createTextNode(""), (() => {
+    const field = document.createElement("fluent-text-field");
+    field.className = "trigger-threshold";
+    field.type = "number";
+    field.value = trigger.threshold_value ?? 0;
+    return field;
+  })());
+  setThresholdLabel();
+  metricSelect.addEventListener("change", setThresholdLabel);
+
+  const intervalLabel = document.createElement("label");
+  intervalLabel.append(document.createTextNode("Remind every (min)"), (() => {
+    const field = document.createElement("fluent-text-field");
+    field.className = "trigger-interval";
+    field.type = "number";
+    field.value = Math.round((trigger.remind_interval_s ?? 300) / 60) || 1;
+    return field;
+  })());
+
+  const topConsumersBtn = document.createElement("button");
+  topConsumersBtn.type = "button";
+  topConsumersBtn.className = "trigger-top-consumers";
+  topConsumersBtn.textContent = "View top consumers";
+  topConsumersBtn.addEventListener("click", () => viewTopConsumers(metricSelect.value));
+
+  row.append(top, thresholdLabel, intervalLabel, topConsumersBtn);
+  return row;
+}
+
+function renderTriggers(triggers) {
+  triggersList.replaceChildren(...(triggers || []).map(createTriggerRow));
+}
+
+function collectTriggers() {
+  return [...triggersList.querySelectorAll(".trigger-row")].map((row) => ({
+    id: row.dataset.id,
+    metric: row.querySelector(".trigger-metric").value,
+    threshold_value: Number(row.querySelector(".trigger-threshold").value),
+    remind_interval_s: Math.max(Number(row.querySelector(".trigger-interval").value) * 60, 60),
+    enabled: row.querySelector(".trigger-enabled").checked,
+  }));
+}
+
+triggerAddBtn.addEventListener("click", () => {
+  triggersList.appendChild(
+    createTriggerRow({ id: crypto.randomUUID(), metric: "ram", threshold_value: 0, remind_interval_s: 300, enabled: true })
+  );
+});
+
+function viewTopConsumers(metric) {
+  settingsPanel.setAttribute("hidden", "");
+  selectMetric(metric);
+  if (!liveViewToggle.checked) {
+    liveViewToggle.checked = true;
+    liveViewToggle.dispatchEvent(new Event("change"));
+  }
+  processList.scrollIntoView({ behavior: "smooth", block: "center" });
+}
 
 async function loadSettings() {
   try {
@@ -156,6 +257,7 @@ async function loadSettings() {
       field.checked = settingsCache[key];
     }
     colorWarningField.value = Math.round(settingsCache.color_warning_ratio * 100);
+    renderTriggers(settingsCache.triggers);
     chart.setRetention(settingsCache.chart_retention_minutes, settingsCache.poll_interval_s);
     liveIndicator.title = `Refreshing every ${settingsCache.poll_interval_s}s`;
   } catch (err) {
@@ -172,6 +274,7 @@ async function saveSettings() {
     body[key] = SWITCH_FIELDS[key].checked;
   }
   body.color_warning_ratio = Number(colorWarningField.value) / 100;
+  body.triggers = collectTriggers();
   const res = await fetch("/api/settings", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -416,6 +519,16 @@ ws.addEventListener("spike", (event) => {
   chart.pushSpike(spike);
   if (!liveViewToggle.checked) processList.showSpike(spike);
   toast.show(spike);
+});
+
+ws.addEventListener("trigger_alert", (event) => {
+  const alert = event.detail;
+  const unit = METRIC_UNIT[alert.metric] || "";
+  RINGS[alert.metric]?.pulse();
+  toast.showCustom(
+    `${METRIC_LABELS[alert.metric] || alert.metric} trigger`,
+    `Now at ${alert.value.toFixed(1)}${unit} (threshold ${alert.threshold_value.toFixed(1)}${unit})`
+  );
 });
 
 const METRIC_UNIT = { cpu: "%", gpu: "%", ram: " GB" };

@@ -328,6 +328,63 @@
         align-items: center;
         justify-content: space-between;
       }
+      #triggers-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--pg-space-2);
+      }
+      .trigger-row {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: var(--pg-space-2);
+        border: 1px solid var(--pg-panel-border);
+        border-radius: var(--pg-radius);
+      }
+      .trigger-row-top {
+        display: flex;
+        align-items: center;
+        gap: var(--pg-space-2);
+      }
+      .trigger-row-top select {
+        flex: 1;
+        background: var(--pg-panel-bg);
+        color: var(--pg-text);
+        border: 1px solid var(--pg-panel-border);
+        border-radius: 6px;
+        padding: 4px 6px;
+        font-size: 12px;
+        color-scheme: dark;
+      }
+      .trigger-remove {
+        border: none;
+        background: none;
+        color: var(--pg-text-dim);
+        cursor: pointer;
+        font-size: 16px;
+        line-height: 1;
+        padding: 0 4px;
+      }
+      .trigger-remove:hover {
+        color: var(--pg-danger);
+      }
+      .trigger-row label {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 12px;
+        color: var(--pg-text-dim);
+      }
+      .trigger-top-consumers {
+        align-self: flex-start;
+        border: none;
+        background: none;
+        color: var(--pg-accent);
+        font-size: 12px;
+        text-decoration: underline;
+        cursor: pointer;
+        padding: 0;
+      }
       #settings-footer {
         display: flex;
         flex-direction: column;
@@ -417,6 +474,12 @@
           Red within (points of ceiling)
           <fluent-text-field id="field-color-danger" type="number"></fluent-text-field>
         </label>
+      </fluent-card>
+
+      <fluent-card class="settings-group">
+        <h3>Triggers</h3>
+        <div id="triggers-list"></div>
+        <fluent-button id="trigger-add" appearance="outline">+ Add trigger</fluent-button>
       </fluent-card>
 
       <fluent-card id="settings-footer">
@@ -514,6 +577,17 @@
         <h3>History</h3>
         <p>Browse what happened over the last 24 hours, 7 days, or 30 days -- a combined chart plus a list
           of every spike in that range.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>Triggers</h3>
+        <p>Custom absolute-value alarms, independent of the spike detection above. Set a
+          <strong>metric</strong> (RAM in GB, or CPU/GPU in %), a <strong>threshold</strong>, and how
+          often (in minutes) to <strong>keep reminding</strong> you while the value stays at or above
+          it. The reminder stops the instant it drops back down, and fires again right away on the
+          next crossing rather than waiting out a stale interval. Each trigger's
+          <strong>"View top consumers"</strong> link jumps straight to the Top processes panel in Live
+          view for that resource, so you can see what's actually using it.</p>
       </div>
 
       <div class="help-section">
