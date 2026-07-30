@@ -3,6 +3,30 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.1] - 2026-07-30
+
+### Fixed
+- WebView2 throttles/freezes JS execution and rendering while the window is
+  minimized or unfocused for a while, so the timeline chart and gauges could
+  go stale and no longer match real system usage once the window was
+  restored. The backend's sampling loop is unaffected (it's a separate
+  Python asyncio task, not page JS), and native winotify toasts still fire
+  normally during that period -- only the in-app visual state was stale.
+  Fixed by re-fetching `/api/history` and snapping the gauges/chart to the
+  latest real data on `visibilitychange`/`focus` (and on WS reconnect),
+  instead of waiting for the next live tick.
+
+### Added
+- Live/heartbeat indicator next to the logo: pulses on every real tick and
+  reads "Live", "Stale (Xs)", or "Disconnected" so the user can tell at a
+  glance whether the app is actually reporting in real time.
+
+Verified: the catch-up fetch-and-apply path runs correctly and updates the
+gauges from fresh server data; the live indicator correctly reports "Stale"
+once ticks stop landing. The underlying throttling behavior itself was
+observed directly in a long-hidden browser tab during testing -- a real
+analog of the reported bug, not just a theoretical one.
+
 ## [0.9.0] - 2026-07-30
 
 ### Changed

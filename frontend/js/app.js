@@ -33,6 +33,8 @@ const toast = document.getElementById("toast");
 const settingsPanel = document.getElementById("settings-panel");
 const settingsToggle = document.getElementById("settings-toggle");
 const settingsSave = document.getElementById("settings-save");
+const liveIndicator = document.getElementById("live-indicator");
+const liveLabel = liveIndicator.querySelector(".label");
 
 // Maps a settings key to its field element, one entry per threshold this
 // panel edits. poll_interval_s is the one shared (non-per-resource) field.
@@ -97,15 +99,71 @@ async function saveSettings() {
   settingsCache = await res.json();
 }
 
+// /api/history ticks store an already-averaged cpu_pct_avg; live WS ticks
+// carry a per-core cpu_pct array. Both shapes need to feed the same ring.
+function tickCpuAvg(tick) {
+  if (typeof tick.cpu_pct_avg === "number") return tick.cpu_pct_avg;
+  if (Array.isArray(tick.cpu_pct) && tick.cpu_pct.length) {
+    return tick.cpu_pct.reduce((a, b) => a + b, 0) / tick.cpu_pct.length;
+  }
+  return 0;
+}
+
+let lastTickTs = 0;
+
+function applyTick(tick) {
+  const nowMs = tick.ts * 1000;
+  lastTickTs = tick.ts;
+
+  ringRam.update({
+    pct: tick.ram_pct,
+    display: `${tick.ram_gb.toFixed(1)} GB`,
+    state: metricState("ram", tick.ram_pct, settingsCache.ram_pct_ceiling, nowMs),
+  });
+
+  const cpuAvg = tickCpuAvg(tick);
+  ringCpu.update({
+    pct: cpuAvg,
+    display: `${cpuAvg.toFixed(0)}%`,
+    state: metricState("cpu", cpuAvg, settingsCache.cpu_pct_ceiling, nowMs),
+  });
+
+  if (tick.gpu_pct != null) {
+    ringGpu.update({
+      pct: tick.gpu_pct,
+      display: `${tick.gpu_pct.toFixed(0)}%`,
+      state: metricState("gpu", tick.gpu_pct, settingsCache.gpu_pct_ceiling, nowMs),
+    });
+  } else {
+    ringGpu.update({ pct: 0, display: "n/a" });
+  }
+}
+
+// Also used as the WebView-throttling "catch-up": when the window was
+// minimized or unfocused long enough for WebView2 to throttle/freeze
+// rendering, the chart and gauges can go stale relative to real usage.
+// Re-running this on visibilitychange/focus re-hydrates from the server's
+// (unaffected -- it's a separate Python asyncio loop) ground truth instead
+// of waiting for the next live tick to arrive.
 async function backfill() {
   try {
     const res = await fetch("/api/history?range=1h");
     const { ticks, spikes } = await res.json();
     chart.backfill(ticks, spikes);
     if (spikes.length) processList.showSpike(spikes[spikes.length - 1]);
+    if (ticks.length) applyTick(ticks[ticks.length - 1]);
   } catch (err) {
     console.warn("history backfill failed", err);
   }
+}
+
+let lastCatchUpAt = 0;
+function catchUp() {
+  if (document.visibilityState !== "visible") return;
+  const now = Date.now();
+  if (now - lastCatchUpAt < 2000) return; // debounce rapid focus/visibility events
+  lastCatchUpAt = now;
+  backfill();
 }
 
 function metricState(metric, value, ceiling, nowMs) {
@@ -136,36 +194,48 @@ for (const [metric, ring] of Object.entries(RINGS)) {
 }
 selectMetric("ram");
 
+function flashHeartbeat() {
+  liveIndicator.removeAttribute("data-flash");
+  void liveIndicator.offsetWidth; // restart the CSS animation even if already running
+  liveIndicator.setAttribute("data-flash", "");
+}
+
+let wsConnected = false;
+
+function updateLiveIndicator() {
+  if (!wsConnected) {
+    liveIndicator.dataset.state = "disconnected";
+    liveLabel.textContent = "Disconnected";
+    return;
+  }
+  const ageS = lastTickTs ? Date.now() / 1000 - lastTickTs : Infinity;
+  const staleAfterS = Math.max(settingsCache.poll_interval_s * 3, 6);
+  if (ageS > staleAfterS) {
+    liveIndicator.dataset.state = "stale";
+    liveLabel.textContent = `Stale (${Math.round(ageS)}s)`;
+  } else {
+    liveIndicator.dataset.state = "live";
+    liveLabel.textContent = "Live";
+  }
+}
+setInterval(updateLiveIndicator, 1000);
+
 const ws = new WsClient("/ws");
 
+ws.addEventListener("open", () => {
+  wsConnected = true;
+  updateLiveIndicator();
+  catchUp(); // reconnecting after a drop is exactly the same staleness risk as a throttled resume
+});
+ws.addEventListener("close", () => {
+  wsConnected = false;
+  updateLiveIndicator();
+});
+
 ws.addEventListener("tick", (event) => {
-  const tick = event.detail;
-  const nowMs = tick.ts * 1000;
-
-  ringRam.update({
-    pct: tick.ram_pct,
-    display: `${tick.ram_gb.toFixed(1)} GB`,
-    state: metricState("ram", tick.ram_pct, settingsCache.ram_pct_ceiling, nowMs),
-  });
-
-  const cpuAvg = tick.cpu_pct.length ? tick.cpu_pct.reduce((a, b) => a + b, 0) / tick.cpu_pct.length : 0;
-  ringCpu.update({
-    pct: cpuAvg,
-    display: `${cpuAvg.toFixed(0)}%`,
-    state: metricState("cpu", cpuAvg, settingsCache.cpu_pct_ceiling, nowMs),
-  });
-
-  if (tick.gpu_pct != null) {
-    ringGpu.update({
-      pct: tick.gpu_pct,
-      display: `${tick.gpu_pct.toFixed(0)}%`,
-      state: metricState("gpu", tick.gpu_pct, settingsCache.gpu_pct_ceiling, nowMs),
-    });
-  } else {
-    ringGpu.update({ pct: 0, display: "n/a" });
-  }
-
-  chart.pushTick(tick);
+  applyTick(event.detail);
+  chart.pushTick(event.detail);
+  flashHeartbeat();
 });
 
 ws.addEventListener("spike", (event) => {
@@ -183,6 +253,11 @@ settingsToggle.addEventListener("click", () => {
 settingsSave.addEventListener("click", () => {
   saveSettings().catch((err) => console.warn("settings save failed", err));
 });
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") catchUp();
+});
+window.addEventListener("focus", catchUp);
 
 loadSettings();
 backfill();
