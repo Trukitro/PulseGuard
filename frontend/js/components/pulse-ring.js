@@ -7,8 +7,21 @@ const TEMPLATE = `
     flex-direction: column;
     align-items: center;
     gap: 8px;
+    cursor: pointer;
+    border-radius: 16px;
+    padding: 8px;
+    transition: background 0.2s ease;
     --ring-color: var(--pg-accent, #2899f5);
     --ring-glow: var(--pg-accent-glow, rgba(40,153,245,0.55));
+  }
+  :host(:hover) {
+    background: rgba(255, 255, 255, 0.04);
+  }
+  :host([selected]) {
+    background: rgba(255, 255, 255, 0.07);
+  }
+  :host([selected]) .label {
+    color: var(--pg-text, #eef1f7);
   }
   :host([state="warning"]) {
     --ring-color: var(--pg-warn, #ffb900);
@@ -100,6 +113,16 @@ export class PulseRing extends HTMLElement {
     this._value = root.querySelector(".value");
     this._labelEl = root.querySelector(".label");
     this._labelEl.textContent = this.getAttribute("label") || "";
+
+    this.tabIndex = 0;
+    this.setAttribute("role", "button");
+    this.setAttribute("aria-pressed", "false");
+    this.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        this.click();
+      }
+    });
   }
 
   attributeChangedCallback(name, _old, value) {

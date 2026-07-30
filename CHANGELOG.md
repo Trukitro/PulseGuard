@@ -3,6 +3,19 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.0] - 2026-07-30
+
+### Added
+- Pulse rings are now clickable (and keyboard-focusable): selecting RAM/CPU/GPU
+  switches the RAM timeline chart to that resource's own timeline, with its
+  own y-axis scale and its own filtered spike markers.
+
+### Fixed
+- spike-chart crashed switching to the CPU metric on backfilled history data:
+  `/api/history` ticks carry an already-averaged `cpu_pct_avg` while live
+  WebSocket ticks carry a per-core `cpu_pct` array; the chart's CPU averaging
+  only handled the array shape.
+
 ## [0.1.1] - 2026-07-30
 
 ### Fixed

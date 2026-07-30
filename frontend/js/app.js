@@ -81,6 +81,22 @@ function pulseAll() {
   ringGpu.pulse();
 }
 
+const RINGS = { ram: ringRam, cpu: ringCpu, gpu: ringGpu };
+
+function selectMetric(metric) {
+  for (const [key, ring] of Object.entries(RINGS)) {
+    const isSelected = key === metric;
+    ring.toggleAttribute("selected", isSelected);
+    ring.setAttribute("aria-pressed", String(isSelected));
+  }
+  chart.setMetric(metric);
+}
+
+for (const [metric, ring] of Object.entries(RINGS)) {
+  ring.addEventListener("click", () => selectMetric(metric));
+}
+selectMetric("ram");
+
 const ws = new WsClient("/ws");
 
 ws.addEventListener("tick", (event) => {
