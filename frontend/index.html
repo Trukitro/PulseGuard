@@ -22,6 +22,16 @@
         height: 40px;
         display: block;
       }
+      .header-left {
+        display: flex;
+        align-items: center;
+        gap: var(--pg-space-2);
+      }
+      #app-version {
+        font-size: 11px;
+        color: var(--pg-text-dim);
+        font-family: var(--pg-font-mono);
+      }
       .header-right {
         display: flex;
         align-items: center;
@@ -446,7 +456,10 @@
   </head>
   <body>
     <header>
-      <img src="/assets/logo.svg" alt="PulseGuard" />
+      <div class="header-left">
+        <img src="/assets/logo.svg" alt="PulseGuard" />
+        <span id="app-version" title="PulseGuard version"></span>
+      </div>
       <div class="header-right">
         <div id="live-indicator" data-state="live" title="Refreshing every 2s">
           <span class="dot"></span>

@@ -3,6 +3,13 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.28.0] - 2026-07-31
+
+### Added
+- The running app version (from the v0.26.0 `/api/version` endpoint) is now
+  shown next to the logo in the header, e.g. "v0.28.0" -- so it's always
+  visible which build you're on without opening the Debug tab or Help.
+
 ## [0.27.0] - 2026-07-31
 
 ### Added

@@ -695,4 +695,11 @@ document.addEventListener("visibilitychange", () => {
 // on every focus event.
 window.addEventListener("focus", () => catchUp());
 
+fetch("/api/version")
+  .then((res) => res.json())
+  .then(({ version }) => {
+    document.getElementById("app-version").textContent = `v${version}`;
+  })
+  .catch((err) => console.warn("version fetch failed", err));
+
 loadSettings().then(backfill);
