@@ -3,6 +3,30 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.27.0] - 2026-07-31
+
+### Added
+- Debug tab: a new hidden drawer (toggle button next to History/Help) with
+  a live raw data log split into three columns -- RAM, CPU, GPU -- one line
+  per incoming tick with a timestamp and the exact raw value, so you can
+  see at a glance whether ticks are still arriving at all and what they
+  actually contain.
+- A "Backend" section in the same tab polls the `/api/debug` endpoint
+  (added in v0.26.0) every 3s while open: current version, loop iteration
+  count, how long ago the backend's sampling loop last completed a cycle,
+  current WS connection count, and the most recent backend errors (with
+  traceback) if any occurred.
+- A "Connection events" log records every WS open/close and every
+  Reconnect click (manual or the self-healing watchdog's automatic one)
+  with a timestamp, client-side, for this window's session.
+- Together, this is meant to answer the exact question this tab was asked
+  for: if a freeze happens again, "Loop last tick" tells you whether the
+  backend loop itself is still alive (should no longer be possible to kill
+  after v0.26.0's fix, but this is the way to confirm it) versus the
+  problem being only in the WebSocket layer -- two failure modes that look
+  identical from the main dashboard alone.
+- Help panel documents the Debug tab.
+
 ## [0.26.0] - 2026-07-31
 
 ### Fixed

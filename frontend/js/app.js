@@ -56,8 +56,19 @@ const helpPanel = document.getElementById("help-panel");
 const drawerBackdrop = document.getElementById("drawer-backdrop");
 const triggersList = document.getElementById("triggers-list");
 const triggerAddBtn = document.getElementById("trigger-add");
+const debugToggle = document.getElementById("debug-toggle");
+const debugPanel = document.getElementById("debug-panel");
+const debugLogRam = document.getElementById("debug-log-ram");
+const debugLogCpu = document.getElementById("debug-log-cpu");
+const debugLogGpu = document.getElementById("debug-log-gpu");
+const debugVersionEl = document.getElementById("debug-version");
+const debugLoopIterationsEl = document.getElementById("debug-loop-iterations");
+const debugLoopAgeEl = document.getElementById("debug-loop-age");
+const debugWsConnectionsEl = document.getElementById("debug-ws-connections");
+const debugErrorsLogEl = document.getElementById("debug-errors-log");
+const debugEventsLogEl = document.getElementById("debug-events-log");
 
-const DRAWERS = [helpPanel, historyPanel];
+const DRAWERS = [helpPanel, historyPanel, debugPanel];
 
 function openDrawer(panel) {
   for (const d of DRAWERS) d.classList.toggle("open", d === panel);
@@ -72,6 +83,60 @@ function toggleDrawer(panel) {
   else openDrawer(panel);
 }
 drawerBackdrop.addEventListener("click", closeDrawers);
+
+// Debug tab: raw per-metric tick log plus backend health, for diagnosing the
+// "reconnect does nothing, everything froze" failure mode -- the goal is to
+// tell apart "the backend loop itself died" (loop age keeps growing no
+// matter what) from "just the WS socket dropped" (loop age stays fresh).
+function appendDebugLine(container, text) {
+  const line = document.createElement("div");
+  line.textContent = text;
+  container.appendChild(line);
+  while (container.childElementCount > 40) container.removeChild(container.firstChild);
+}
+
+function logDebugEvent(text) {
+  appendDebugLine(debugEventsLogEl, `${new Date().toLocaleTimeString()}  ${text}`);
+}
+
+function logDebugTick(tick) {
+  const time = new Date(tick.ts * 1000).toLocaleTimeString();
+  appendDebugLine(debugLogRam, `${time}  ${tick.ram_pct.toFixed(1)}%  ${tick.ram_gb.toFixed(2)} GB`);
+  appendDebugLine(debugLogCpu, `${time}  ${tickCpuAvg(tick).toFixed(1)}%`);
+  appendDebugLine(
+    debugLogGpu,
+    tick.gpu_pct != null ? `${time}  ${tick.gpu_pct.toFixed(1)}%  ${(tick.vram_gb ?? 0).toFixed(2)} GB` : `${time}  n/a`
+  );
+}
+
+async function pollDebug() {
+  try {
+    const res = await fetch("/api/debug");
+    const data = await res.json();
+    debugVersionEl.textContent = data.version;
+    debugLoopIterationsEl.textContent = data.loop_iterations;
+    debugLoopAgeEl.textContent =
+      data.loop_age_s != null ? `${data.loop_age_s}s ago` : "never (loop hasn't completed an iteration)";
+    debugWsConnectionsEl.textContent = data.ws_connections;
+    debugErrorsLogEl.replaceChildren();
+    for (const entry of data.log) {
+      if (entry.level !== "error") continue;
+      const line = document.createElement("div");
+      line.textContent = `${new Date(entry.ts * 1000).toLocaleTimeString()}  ${entry.message.trim().split("\n").pop()}`;
+      debugErrorsLogEl.appendChild(line);
+    }
+  } catch (err) {
+    console.warn("debug fetch failed", err);
+  }
+}
+
+debugToggle.addEventListener("click", () => {
+  toggleDrawer(debugPanel);
+  if (debugPanel.classList.contains("open")) pollDebug();
+});
+setInterval(() => {
+  if (debugPanel.classList.contains("open")) pollDebug();
+}, 3000);
 
 function formatBps(bytesPerSec) {
   if (bytesPerSec == null) return "-";
@@ -473,6 +538,7 @@ const ws = new WsClient("/ws");
 reconnectBtn.addEventListener("click", () => {
   reconnectBtn.disabled = true;
   liveLabel.textContent = "Reconnecting...";
+  logDebugEvent("manual Reconnect clicked");
   ws.reconnectNow();
   catchUp(true); // don't wait on the WS "open" handler to chain into this -- fetch fresh data right away too
   setTimeout(() => {
@@ -491,6 +557,7 @@ setInterval(() => {
   const ageS = lastTickTs ? Date.now() / 1000 - lastTickTs : Infinity;
   const staleAfterS = Math.max(settingsCache.poll_interval_s * 3, 6);
   if (ageS > staleAfterS * 2) {
+    logDebugEvent(`watchdog forced reconnect (data was ${Math.round(ageS)}s stale)`);
     ws.reconnectNow();
     catchUp(true);
   }
@@ -499,16 +566,19 @@ setInterval(() => {
 ws.addEventListener("open", () => {
   wsConnected = true;
   updateLiveIndicator();
+  logDebugEvent("WS open");
   catchUp(); // reconnecting after a drop is exactly the same staleness risk as a throttled resume
 });
 ws.addEventListener("close", () => {
   wsConnected = false;
   updateLiveIndicator();
+  logDebugEvent("WS closed");
 });
 
 ws.addEventListener("tick", (event) => {
   applyTick(event.detail);
   chart.pushTick(event.detail);
+  logDebugTick(event.detail);
   flashHeartbeat();
 });
 

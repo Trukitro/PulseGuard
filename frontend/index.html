@@ -385,6 +385,57 @@
         cursor: pointer;
         padding: 0;
       }
+      #debug-panel {
+        width: min(720px, 95vw);
+      }
+      .debug-columns {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--pg-space-3);
+      }
+      .debug-column h3 {
+        margin: 0 0 var(--pg-space-2) 0;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--pg-text-dim);
+      }
+      .debug-log {
+        height: 200px;
+        overflow-y: auto;
+        font-family: var(--pg-font-mono);
+        font-size: 11px;
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid var(--pg-panel-border);
+        border-radius: 6px;
+        padding: 6px 8px;
+        display: flex;
+        flex-direction: column-reverse;
+      }
+      .debug-log div {
+        padding: 1px 0;
+        white-space: nowrap;
+      }
+      .debug-backend {
+        margin-top: var(--pg-space-3);
+        display: flex;
+        flex-direction: column;
+        gap: var(--pg-space-2);
+      }
+      .debug-backend-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--pg-space-3);
+        font-size: 12px;
+      }
+      .debug-backend-stats .dim {
+        color: var(--pg-text-dim);
+      }
+      #debug-errors-log,
+      #debug-events-log {
+        height: 130px;
+      }
       #settings-footer {
         display: flex;
         flex-direction: column;
@@ -404,6 +455,7 @@
         <button id="reconnect-btn" type="button">Reconnect</button>
         <fluent-button id="mini-mode-toggle" appearance="outline">Mini mode</fluent-button>
         <fluent-button id="history-toggle" appearance="outline">History</fluent-button>
+        <fluent-button id="debug-toggle" appearance="outline">Debug</fluent-button>
         <fluent-button id="help-toggle" appearance="outline">Help</fluent-button>
         <fluent-button id="settings-toggle" appearance="outline">Settings</fluent-button>
       </div>
@@ -568,6 +620,18 @@
       </div>
 
       <div class="help-section">
+        <h3>Debug</h3>
+        <p>A live, raw data log split into RAM / CPU / GPU columns, plus backend health --
+          for diagnosing a freeze or a Reconnect that doesn't seem to do anything. "Loop last
+          tick" tells you whether the backend's sampling loop itself is still alive: if that
+          number keeps growing no matter how many times you hit Reconnect, the problem is on
+          the backend side, not the WebSocket -- check "Backend errors" for what went wrong.
+          If it stays fresh instead, the backend is fine and it's just the connection that
+          needs a moment to recover. "Connection events" logs every WS open/close and every
+          Reconnect click (manual or automatic) with a timestamp, in this window only.</p>
+      </div>
+
+      <div class="help-section">
         <h3>Mini mode</h3>
         <p>Collapses the app to a small always-on-top widget showing just the three rings, for passive
           monitoring while you work. Click the corner icon to restore the full window.</p>
@@ -610,6 +674,41 @@
           <li><strong>Chart history</strong>: how much data the Timeline keeps in memory.</li>
           <li><strong>Poll interval</strong>: how often PulseGuard samples your system, in seconds.</li>
         </ul>
+      </div>
+    </section>
+
+    <section id="debug-panel" class="pg-panel panel drawer">
+      <h2>Debug</h2>
+      <p style="font-size: 12px; color: var(--pg-text-dim); margin: 0 0 var(--pg-space-3) 0;">
+        Raw live tick log per resource, plus backend health -- for diagnosing freezes or a
+        Reconnect that doesn't seem to do anything.
+      </p>
+      <div class="debug-columns">
+        <div class="debug-column">
+          <h3>RAM</h3>
+          <div id="debug-log-ram" class="debug-log"></div>
+        </div>
+        <div class="debug-column">
+          <h3>CPU</h3>
+          <div id="debug-log-cpu" class="debug-log"></div>
+        </div>
+        <div class="debug-column">
+          <h3>GPU</h3>
+          <div id="debug-log-gpu" class="debug-log"></div>
+        </div>
+      </div>
+      <div class="debug-backend">
+        <h3 class="history-spikes-heading">Backend</h3>
+        <div class="debug-backend-stats">
+          <span><span class="dim">Version</span> <span id="debug-version">-</span></span>
+          <span><span class="dim">Loop iterations</span> <span id="debug-loop-iterations">-</span></span>
+          <span><span class="dim">Loop last tick</span> <span id="debug-loop-age">-</span></span>
+          <span><span class="dim">WS connections</span> <span id="debug-ws-connections">-</span></span>
+        </div>
+        <h3 class="history-spikes-heading">Backend errors</h3>
+        <div id="debug-errors-log" class="debug-log"></div>
+        <h3 class="history-spikes-heading">Connection events (this window)</h3>
+        <div id="debug-events-log" class="debug-log"></div>
       </div>
     </section>
 
