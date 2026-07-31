@@ -3,6 +3,41 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.26.0] - 2026-07-31
+
+### Fixed
+- **Likely root cause of the recurring "reconnect does nothing, all
+  monitoring freezes" bug.** The backend's sampling loop (`AppState._loop`)
+  ran its entire per-tick body -- psutil sampling, SQLite writes, process
+  snapshotting, notifications -- with zero exception handling. Any single
+  transient failure in any of those (a psutil hiccup, an NVML error, a
+  locked SQLite file, ...) propagated out of the loop's `asyncio.Task` and
+  killed it *permanently* -- monitoring stopped for good, silently, with
+  nothing in the console beyond asyncio's one-line "Task exception was
+  never retrieved". Reconnecting the WebSocket afterward could never fix
+  it: reconnecting only reopens the socket, it doesn't restart the dead
+  loop, so no new ticks would ever arrive again regardless of how many
+  times Reconnect was clicked -- exactly the symptom reported. The loop
+  body is now wrapped in try/except: a failed iteration is logged (with
+  full traceback) and skipped, and monitoring keeps ticking on the next
+  cycle no matter what went wrong. Verified with an isolated test that
+  injects a mid-iteration exception and confirms the loop logs it and
+  keeps running afterward.
+
+### Added
+- Backend diagnostics: an in-memory ring buffer (`AppState.debug_log`,
+  last 200 entries) now records every loop error (with traceback) and every
+  WS connect/disconnect, and a heartbeat (`loop_iterations`,
+  `last_loop_ts`) tracks whether the sampling loop itself is alive.
+- `GET /api/debug`: exposes the above (plus current WS connection count)
+  over plain REST -- deliberately independent of the WebSocket, so it can
+  answer even when the WS is the thing that's broken, and can tell apart
+  "backend loop died" (heartbeat age keeps growing no matter what) from
+  "only the socket dropped" (heartbeat stays fresh). This is the data feed
+  behind the frontend Debug tab landing in the next version.
+- `GET /api/version`: current app version, for both the debug endpoint and
+  the frontend version display landing in a future version.
+
 ## [0.25.0] - 2026-07-30
 
 ### Added
