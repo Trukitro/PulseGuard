@@ -3,6 +3,37 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.31.0] - 2026-08-06
+
+### Fixed
+- **Spike logging has been silently failing on any database created under
+  the original v0.1.x/v0.2.0 schema, since v0.3.0.** That schema's `spikes`
+  table had `from_gb`/`to_gb` columns with a `NOT NULL` constraint. v0.3.0
+  widened spike detection past RAM-only and added metric-agnostic
+  `from_value`/`to_value` columns instead, but `_migrate_spikes_table`
+  deliberately left the old columns in place (to preserve existing spike
+  history) without dropping their `NOT NULL` constraint -- and
+  `log_spike()`'s INSERT never filled them in. Every spike insert on such a
+  database has been throwing `sqlite3.IntegrityError: NOT NULL constraint
+  failed: spikes.from_gb` ever since. Before v0.26.0's loop-resilience fix,
+  this would silently kill the whole monitoring loop the moment any spike
+  fired -- a very plausible root cause (or contributor) to the original
+  "reconnect does nothing, everything freezes" reports, since gaming
+  sessions are exactly when a RAM/CPU/GPU spike is likely. After v0.26.0 it
+  became a spammed-but-caught error instead, visible in the Debug tab.
+  `History` now detects the legacy columns at startup and populates them
+  alongside the new ones on every insert, satisfying the old constraint
+  without touching existing data. Verified against a simulated legacy
+  schema, a fresh schema, and a copy of the reporter's real database (which
+  did have this exact broken schema).
+
+### Why
+Found while investigating a real gaming session's Debug tab: `Backend
+errors` was spammed with this exact IntegrityError, and the session's
+History chart showed clear RAM/CPU/GPU spikes with "No spikes in this
+range" -- direct confirmation the bug was live and actively eating spike
+data during the crash investigation itself.
+
 ## [0.30.0] - 2026-08-06
 
 ### Added

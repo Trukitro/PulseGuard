@@ -83,6 +83,14 @@ class History:
         self._conn.commit()
         _migrate_spikes_table(self._conn)
         _migrate_ticks_table(self._conn)
+        # A database created under the original v0.1.x/v0.2.0 schema still
+        # carries the old from_gb/to_gb columns with a NOT NULL constraint
+        # that _migrate_spikes_table (deliberately) never drops -- SQLite
+        # can't remove a NOT NULL constraint without rebuilding the whole
+        # table. log_spike() must keep satisfying it forever on any database
+        # that still has it, or every single spike insert fails.
+        cols = {row[1] for row in self._conn.execute("PRAGMA table_info(spikes)").fetchall()}
+        self._has_legacy_spike_cols = "from_gb" in cols
 
     def log_tick(self, tick: Tick) -> None:
         cpu_pct_avg = sum(tick["cpu_pct"]) / len(tick["cpu_pct"]) if tick["cpu_pct"] else 0.0
@@ -110,17 +118,38 @@ class History:
         self._conn.commit()
 
     def log_spike(self, spike: Spike) -> None:
-        self._conn.execute(
-            "INSERT INTO spikes (ts, metric, from_value, to_value, window_s, top_json) VALUES (?, ?, ?, ?, ?, ?)",
-            (
-                spike["ts"],
-                spike["metric"],
-                spike["from_value"],
-                spike["to_value"],
-                spike["window_s"],
-                json.dumps(spike.get("top", [])),
-            ),
-        )
+        top_json = json.dumps(spike.get("top", []))
+        if self._has_legacy_spike_cols:
+            # Satisfy the old from_gb/to_gb NOT NULL columns too -- their
+            # values are otherwise unused (nothing reads them; query_spikes
+            # selects from_value/to_value) so what's stored there doesn't
+            # matter beyond "not null", even for a non-RAM (%) spike.
+            self._conn.execute(
+                "INSERT INTO spikes (ts, metric, from_value, to_value, window_s, top_json, from_gb, to_gb) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    spike["ts"],
+                    spike["metric"],
+                    spike["from_value"],
+                    spike["to_value"],
+                    spike["window_s"],
+                    top_json,
+                    spike["from_value"],
+                    spike["to_value"],
+                ),
+            )
+        else:
+            self._conn.execute(
+                "INSERT INTO spikes (ts, metric, from_value, to_value, window_s, top_json) VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    spike["ts"],
+                    spike["metric"],
+                    spike["from_value"],
+                    spike["to_value"],
+                    spike["window_s"],
+                    top_json,
+                ),
+            )
         self._conn.commit()
 
     _TICK_COLS = [
