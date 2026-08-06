@@ -123,6 +123,10 @@
       .io-value {
         font-variant-numeric: tabular-nums;
       }
+      #gpu-throttle[data-active] {
+        color: var(--pg-danger);
+        font-weight: 600;
+      }
       .drawer {
         position: fixed;
         top: 0;
@@ -618,6 +622,16 @@
       </div>
 
       <div class="help-section">
+        <h3>GPU health card</h3>
+        <p>Temperature, power draw, and current throttle state straight from the GPU driver
+          (NVIDIA only). <strong>Throttle</strong> normally reads "None"; if it lists a reason
+          like "HW slowdown" or "HW power brake", the GPU itself is telling the driver something
+          external is limiting it right now -- often a sign of a struggling power supply, a loose
+          power connector, or a thermal issue, not something PulseGuard can fix in software. It
+          turns red whenever any throttle reason is active so it's visible at a glance.</p>
+      </div>
+
+      <div class="help-section">
         <h3>Top processes panel</h3>
         <p>By default shows the processes responsible for the last detected spike. Toggle
           <strong>"Live view"</strong> to instead continuously show the current top processes for whichever
@@ -741,6 +755,12 @@
         <h3>Network</h3>
         <div class="io-row"><span class="io-label">Down</span><span id="net-recv" class="io-value pg-mono">-</span></div>
         <div class="io-row"><span class="io-label">Up</span><span id="net-sent" class="io-value pg-mono">-</span></div>
+      </fluent-card>
+      <fluent-card class="io-card" id="gpu-health-card">
+        <h3>GPU health</h3>
+        <div class="io-row"><span class="io-label">Temp</span><span id="gpu-temp" class="io-value pg-mono">-</span></div>
+        <div class="io-row"><span class="io-label">Power</span><span id="gpu-power" class="io-value pg-mono">-</span></div>
+        <div class="io-row"><span class="io-label">Throttle</span><span id="gpu-throttle" class="io-value pg-mono">-</span></div>
       </fluent-card>
     </section>
 

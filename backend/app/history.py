@@ -55,13 +55,22 @@ def _migrate_spikes_table(conn: sqlite3.Connection) -> None:
 
 
 def _migrate_ticks_table(conn: sqlite3.Connection) -> None:
-    """v0.15.0 added Disk/Network I/O rate columns. Existing rows simply have
-    no reading for them (NULL) rather than needing any data transformation."""
+    """v0.15.0 added Disk/Network I/O rate columns, v0.29.0 added GPU
+    temperature/power/throttle. Existing rows simply have no reading for them
+    (NULL) rather than needing any data transformation."""
     cols = {row[1] for row in conn.execute("PRAGMA table_info(ticks)").fetchall()}
-    new_cols = ["disk_read_bps", "disk_write_bps", "net_sent_bps", "net_recv_bps"]
-    for col in new_cols:
+    new_cols = {
+        "disk_read_bps": "REAL",
+        "disk_write_bps": "REAL",
+        "net_sent_bps": "REAL",
+        "net_recv_bps": "REAL",
+        "gpu_temp_c": "REAL",
+        "gpu_power_w": "REAL",
+        "gpu_throttle_json": "TEXT",
+    }
+    for col, col_type in new_cols.items():
         if col not in cols:
-            conn.execute(f"ALTER TABLE ticks ADD COLUMN {col} REAL")
+            conn.execute(f"ALTER TABLE ticks ADD COLUMN {col} {col_type}")
     conn.commit()
 
 
@@ -79,8 +88,9 @@ class History:
         cpu_pct_avg = sum(tick["cpu_pct"]) / len(tick["cpu_pct"]) if tick["cpu_pct"] else 0.0
         self._conn.execute(
             "INSERT OR REPLACE INTO ticks "
-            "(ts, ram_gb, ram_pct, cpu_pct_avg, gpu_pct, vram_gb, disk_read_bps, disk_write_bps, net_sent_bps, net_recv_bps) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "(ts, ram_gb, ram_pct, cpu_pct_avg, gpu_pct, vram_gb, disk_read_bps, disk_write_bps, net_sent_bps, net_recv_bps, "
+            "gpu_temp_c, gpu_power_w, gpu_throttle_json) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 tick["ts"],
                 tick["ram_gb"],
@@ -92,6 +102,9 @@ class History:
                 tick.get("disk_write_bps"),
                 tick.get("net_sent_bps"),
                 tick.get("net_recv_bps"),
+                tick.get("gpu_temp_c"),
+                tick.get("gpu_power_w"),
+                json.dumps(tick.get("gpu_throttle") or []),
             ),
         )
         self._conn.commit()
@@ -110,24 +123,47 @@ class History:
         )
         self._conn.commit()
 
+    _TICK_COLS = [
+        "ts",
+        "ram_gb",
+        "ram_pct",
+        "cpu_pct_avg",
+        "gpu_pct",
+        "vram_gb",
+        "disk_read_bps",
+        "disk_write_bps",
+        "net_sent_bps",
+        "net_recv_bps",
+        "gpu_temp_c",
+        "gpu_power_w",
+        "gpu_throttle_json",
+    ]
+
+    @staticmethod
+    def _row_to_tick_dict(row: tuple) -> dict:
+        d = dict(zip(History._TICK_COLS, row))
+        throttle_json = d.pop("gpu_throttle_json", None)
+        d["gpu_throttle"] = json.loads(throttle_json) if throttle_json else []
+        return d
+
     def query_ticks(self, since_ts: float) -> list[dict]:
-        cols = [
-            "ts",
-            "ram_gb",
-            "ram_pct",
-            "cpu_pct_avg",
-            "gpu_pct",
-            "vram_gb",
-            "disk_read_bps",
-            "disk_write_bps",
-            "net_sent_bps",
-            "net_recv_bps",
-        ]
         rows = self._conn.execute(
-            f"SELECT {', '.join(cols)} FROM ticks WHERE ts >= ? ORDER BY ts",
+            f"SELECT {', '.join(self._TICK_COLS)} FROM ticks WHERE ts >= ? ORDER BY ts",
             (since_ts,),
         ).fetchall()
-        return [dict(zip(cols, row)) for row in rows]
+        return [self._row_to_tick_dict(row) for row in rows]
+
+    def last_tick_before(self, ts: float, lookback_s: float = 600.0) -> Optional[dict]:
+        """Most recent tick at or before `ts`, within `lookback_s` -- used to
+        answer "what was the system doing right before this crash event" for
+        the Debug tab's crash correlation. A too-old match (PulseGuard wasn't
+        running, or a big gap) is treated as no match rather than misleadingly
+        pairing a crash with stale, unrelated readings."""
+        row = self._conn.execute(
+            f"SELECT {', '.join(self._TICK_COLS)} FROM ticks WHERE ts <= ? AND ts >= ? ORDER BY ts DESC LIMIT 1",
+            (ts, ts - lookback_s),
+        ).fetchone()
+        return self._row_to_tick_dict(row) if row is not None else None
 
     def query_spikes(self, since_ts: float) -> list[dict]:
         rows = self._conn.execute(

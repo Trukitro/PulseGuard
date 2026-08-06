@@ -3,6 +3,30 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.29.0] - 2026-08-06
+
+### Added
+- GPU temperature, power draw, and driver-reported throttle state (NVIDIA/
+  NVML), sampled every tick alongside utilization/VRAM. A new "GPU health"
+  card on the dashboard shows all three live; "Throttle" reads "None"
+  normally and turns red listing the active reason(s) -- HW slowdown, HW
+  power brake, HW/SW thermal slowdown, SW power cap, sync boost -- when the
+  GPU itself reports something external is constraining it right now.
+  These are persisted to history (`ticks.gpu_temp_c`, `gpu_power_w`,
+  `gpu_throttle_json`, migrated in for existing databases) and included in
+  `/api/history`, so a throttle event survives past the moment it happened.
+- Debug tab's GPU column now includes temp/power/throttle-count per tick.
+- Help panel documents the GPU health card.
+
+### Why
+Motivated by intermittent full-system freezes during gaming (monitors go
+black, fans spike to 100%, audio keeps running briefly, then the whole
+machine hangs) that look GPU/power related but weren't visible anywhere in
+the app. This is the live half of the investigation -- ongoing visibility
+into GPU temp/power/throttle state. The other half, correlating a crash
+after the fact against Windows' own crash/shutdown event log, lands in the
+next version.
+
 ## [0.28.0] - 2026-07-31
 
 ### Added

@@ -13,10 +13,29 @@ class Tick(TypedDict):
     cpu_pct: list[float]
     gpu_pct: Optional[float]
     vram_gb: Optional[float]
+    gpu_temp_c: Optional[float]
+    gpu_power_w: Optional[float]
+    gpu_throttle: list[str]
     disk_read_bps: float
     disk_write_bps: float
     net_sent_bps: float
     net_recv_bps: float
+
+
+# Only the flags that indicate something is actively constraining the GPU --
+# GpuIdle/UserDefinedClocks/ApplicationsClocksSetting etc. are normal/expected
+# states, not diagnostically interesting for "is my card in trouble". HwSlowdown
+# and HwPowerBrakeSlowdown in particular are asserted by an external hardware
+# signal -- classic symptom of a struggling PSU or a bad power connection, the
+# exact kind of thing a user chasing random shutdowns under load wants to see.
+_THROTTLE_REASON_LABELS: dict[str, str] = {
+    "nvmlClocksThrottleReasonHwSlowdown": "HW slowdown (power/thermal protection signal)",
+    "nvmlClocksThrottleReasonHwPowerBrakeSlowdown": "HW power brake (PSU/power connector protection)",
+    "nvmlClocksThrottleReasonHwThermalSlowdown": "HW thermal slowdown",
+    "nvmlClocksThrottleReasonSwThermalSlowdown": "SW thermal slowdown",
+    "nvmlClocksThrottleReasonSwPowerCap": "SW power cap",
+    "nvmlClocksThrottleReasonSyncBoost": "Sync boost",
+}
 
 
 class Sampler:
@@ -54,7 +73,13 @@ class Sampler:
 
         gpu_pct: Optional[float] = None
         vram_gb: Optional[float] = None
+        gpu_temp_c: Optional[float] = None
+        gpu_power_w: Optional[float] = None
+        gpu_throttle: list[str] = []
         if self._nvml is not None and self._gpu_handle is not None:
+            # Each metric gets its own try/except -- some driver/GPU combos
+            # support utilization but not power draw (or vice versa), and one
+            # unsupported query shouldn't blank out the others.
             try:
                 util = self._nvml.nvmlDeviceGetUtilizationRates(self._gpu_handle)
                 mem = self._nvml.nvmlDeviceGetMemoryInfo(self._gpu_handle)
@@ -63,6 +88,25 @@ class Sampler:
             except Exception:
                 gpu_pct = None
                 vram_gb = None
+            try:
+                gpu_temp_c = float(
+                    self._nvml.nvmlDeviceGetTemperature(self._gpu_handle, self._nvml.NVML_TEMPERATURE_GPU)
+                )
+            except Exception:
+                gpu_temp_c = None
+            try:
+                gpu_power_w = self._nvml.nvmlDeviceGetPowerUsage(self._gpu_handle) / 1000.0
+            except Exception:
+                gpu_power_w = None
+            try:
+                reasons = self._nvml.nvmlDeviceGetCurrentClocksThrottleReasons(self._gpu_handle)
+                gpu_throttle = [
+                    label
+                    for attr, label in _THROTTLE_REASON_LABELS.items()
+                    if reasons & getattr(self._nvml, attr, 0)
+                ]
+            except Exception:
+                gpu_throttle = []
 
         disk = psutil.disk_io_counters()
         net = psutil.net_io_counters()
@@ -90,6 +134,9 @@ class Sampler:
             "cpu_pct": cpu_pct,
             "gpu_pct": round(gpu_pct, 1) if gpu_pct is not None else None,
             "vram_gb": round(vram_gb, 2) if vram_gb is not None else None,
+            "gpu_temp_c": round(gpu_temp_c, 1) if gpu_temp_c is not None else None,
+            "gpu_power_w": round(gpu_power_w, 1) if gpu_power_w is not None else None,
+            "gpu_throttle": gpu_throttle,
             "disk_read_bps": round(disk_read_bps, 1),
             "disk_write_bps": round(disk_write_bps, 1),
             "net_sent_bps": round(net_sent_bps, 1),

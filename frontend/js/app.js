@@ -45,6 +45,9 @@ const diskReadEl = document.getElementById("disk-read");
 const diskWriteEl = document.getElementById("disk-write");
 const netRecvEl = document.getElementById("net-recv");
 const netSentEl = document.getElementById("net-sent");
+const gpuTempEl = document.getElementById("gpu-temp");
+const gpuPowerEl = document.getElementById("gpu-power");
+const gpuThrottleEl = document.getElementById("gpu-throttle");
 const historyToggle = document.getElementById("history-toggle");
 const historyPanel = document.getElementById("history-panel");
 const historyChart = document.getElementById("history-chart");
@@ -103,10 +106,17 @@ function logDebugTick(tick) {
   const time = new Date(tick.ts * 1000).toLocaleTimeString();
   appendDebugLine(debugLogRam, `${time}  ${tick.ram_pct.toFixed(1)}%  ${tick.ram_gb.toFixed(2)} GB`);
   appendDebugLine(debugLogCpu, `${time}  ${tickCpuAvg(tick).toFixed(1)}%`);
-  appendDebugLine(
-    debugLogGpu,
-    tick.gpu_pct != null ? `${time}  ${tick.gpu_pct.toFixed(1)}%  ${(tick.vram_gb ?? 0).toFixed(2)} GB` : `${time}  n/a`
-  );
+  if (tick.gpu_pct != null) {
+    const temp = tick.gpu_temp_c != null ? `${tick.gpu_temp_c.toFixed(0)}C` : "?C";
+    const power = tick.gpu_power_w != null ? `${tick.gpu_power_w.toFixed(0)}W` : "?W";
+    const throttle = tick.gpu_throttle?.length ? ` !${tick.gpu_throttle.length}` : "";
+    appendDebugLine(
+      debugLogGpu,
+      `${time}  ${tick.gpu_pct.toFixed(1)}%  ${(tick.vram_gb ?? 0).toFixed(2)} GB  ${temp}  ${power}${throttle}`
+    );
+  } else {
+    appendDebugLine(debugLogGpu, `${time}  n/a`);
+  }
 }
 
 async function pollDebug() {
@@ -396,6 +406,12 @@ function applyTick(tick) {
   diskWriteEl.textContent = formatBps(tick.disk_write_bps);
   netRecvEl.textContent = formatBps(tick.net_recv_bps);
   netSentEl.textContent = formatBps(tick.net_sent_bps);
+
+  gpuTempEl.textContent = tick.gpu_temp_c != null ? `${tick.gpu_temp_c.toFixed(0)} C` : "-";
+  gpuPowerEl.textContent = tick.gpu_power_w != null ? `${tick.gpu_power_w.toFixed(0)} W` : "-";
+  const throttle = tick.gpu_throttle || [];
+  gpuThrottleEl.textContent = throttle.length ? throttle.join(", ") : "None";
+  gpuThrottleEl.toggleAttribute("data-active", throttle.length > 0);
 }
 
 // Also used as the WebView-throttling "catch-up": when the window was
