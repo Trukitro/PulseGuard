@@ -18,6 +18,8 @@ a = Analysis(
         "uvicorn.protocols.http.auto",
         "uvicorn.protocols.websockets.auto",
         "uvicorn.lifespan.on",
+        "win32evtlog",
+        "win32timezone",
     ],
     hookspath=[],
     hooksconfig={},

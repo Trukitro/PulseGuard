@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import __version__, autostart, tray_state
+from . import crash_events
 from .detector import Detector
 from .gamemode import is_foreground_fullscreen
 from .history import History
@@ -274,6 +275,22 @@ async def get_debug() -> dict:
         "ws_connections": state.manager.count,
         "log": list(state.debug_log),
     }
+
+
+@app.get("/api/events")
+async def get_events(days: float = 14.0) -> dict:
+    """Recent unexpected-shutdown / hardware-error signatures from the
+    Windows Event Log (see crash_events.py), each paired with PulseGuard's
+    own last-known tick before it happened -- this is the only way to
+    answer "what was the system doing right before it died" for a crash
+    severe enough that nothing running in Windows, including this app,
+    could have observed or logged it in the moment."""
+    events = await asyncio.to_thread(crash_events.query_recent, days)
+    enriched = []
+    for event in events:
+        last_tick = await asyncio.to_thread(state.history.last_tick_before, event["ts"])
+        enriched.append({**event, "last_tick": last_tick})
+    return {"available": crash_events.is_available(), "events": enriched}
 
 
 @app.get("/api/settings")

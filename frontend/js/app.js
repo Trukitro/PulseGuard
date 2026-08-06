@@ -70,6 +70,9 @@ const debugLoopAgeEl = document.getElementById("debug-loop-age");
 const debugWsConnectionsEl = document.getElementById("debug-ws-connections");
 const debugErrorsLogEl = document.getElementById("debug-errors-log");
 const debugEventsLogEl = document.getElementById("debug-events-log");
+const crashEventsList = document.getElementById("crash-events-list");
+const crashEventsUnavailable = document.getElementById("crash-events-unavailable");
+const crashEventsRefreshBtn = document.getElementById("crash-events-refresh");
 
 const DRAWERS = [helpPanel, historyPanel, debugPanel];
 
@@ -140,10 +143,60 @@ async function pollDebug() {
   }
 }
 
+function formatCrashTickSummary(tick) {
+  if (!tick) return "No PulseGuard data from around that time.";
+  const parts = [`RAM ${tick.ram_pct.toFixed(0)}%`, `CPU ${tick.cpu_pct_avg.toFixed(0)}%`];
+  if (tick.gpu_pct != null) parts.push(`GPU ${tick.gpu_pct.toFixed(0)}%`);
+  if (tick.gpu_temp_c != null) parts.push(`${tick.gpu_temp_c.toFixed(0)}C`);
+  if (tick.gpu_power_w != null) parts.push(`${tick.gpu_power_w.toFixed(0)}W`);
+  if (tick.gpu_throttle?.length) parts.push(`throttle: ${tick.gpu_throttle.join(", ")}`);
+  return `Last known reading (${new Date(tick.ts * 1000).toLocaleTimeString()}): ${parts.join(" · ")}`;
+}
+
+async function pollCrashEvents() {
+  try {
+    const res = await fetch("/api/events?days=14");
+    const { available, events } = await res.json();
+    crashEventsUnavailable.style.display = available ? "none" : "block";
+    if (!events.length) {
+      crashEventsList.replaceChildren(
+        Object.assign(document.createElement("div"), {
+          id: "crash-events-empty",
+          textContent: available ? "No unexpected shutdowns or hardware errors in the last 14 days." : "",
+        })
+      );
+      return;
+    }
+    crashEventsList.replaceChildren(
+      ...events.map((e) => {
+        const row = document.createElement("div");
+        row.className = "crash-event-row";
+        const time = document.createElement("div");
+        time.className = "crash-event-time";
+        time.textContent = new Date(e.ts * 1000).toLocaleString([], { dateStyle: "medium", timeStyle: "medium" });
+        const summary = document.createElement("div");
+        summary.className = "crash-event-summary";
+        summary.textContent = `${e.summary} (${e.source}, event ${e.event_id})`;
+        const tickLine = document.createElement("div");
+        tickLine.className = "crash-event-tick";
+        tickLine.textContent = formatCrashTickSummary(e.last_tick);
+        row.append(time, summary, tickLine);
+        return row;
+      })
+    );
+  } catch (err) {
+    console.warn("crash events fetch failed", err);
+  }
+}
+
 debugToggle.addEventListener("click", () => {
   toggleDrawer(debugPanel);
-  if (debugPanel.classList.contains("open")) pollDebug();
+  if (debugPanel.classList.contains("open")) {
+    pollDebug();
+    pollCrashEvents();
+  }
 });
+crashEventsRefreshBtn.addEventListener("click", () => pollCrashEvents());
 setInterval(() => {
   if (debugPanel.classList.contains("open")) pollDebug();
 }, 3000);

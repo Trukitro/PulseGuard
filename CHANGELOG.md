@@ -3,7 +3,7 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.29.0] - 2026-08-06
+## [0.30.0] - 2026-08-06
 
 ### Added
 - GPU temperature, power draw, and driver-reported throttle state (NVIDIA/
@@ -14,18 +14,37 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   GPU itself reports something external is constraining it right now.
   These are persisted to history (`ticks.gpu_temp_c`, `gpu_power_w`,
   `gpu_throttle_json`, migrated in for existing databases) and included in
-  `/api/history`, so a throttle event survives past the moment it happened.
-- Debug tab's GPU column now includes temp/power/throttle-count per tick.
-- Help panel documents the GPU health card.
+  `/api/history`. Debug tab's GPU column includes them per tick too.
+- Crash/shutdown event detector: a new "Recent shutdown / crash events"
+  section in the Debug tab reads Windows' own Event Log for unexpected
+  shutdowns (Kernel-Power 41), hardware errors (WHEA-Logger -- CPU/memory/
+  PCIe), and the paired EventLog 6008, going back 14 days. Each event is
+  paired with PulseGuard's own last known tick from right before it
+  happened (RAM/CPU/GPU/temp/power/throttle), when PulseGuard was running
+  at the time. New `GET /api/events` endpoint; `crash_events.py` uses
+  pywin32's `win32evtlog` (added to requirements + PyInstaller
+  hiddenimports).
+- Help panel documents both.
 
 ### Why
 Motivated by intermittent full-system freezes during gaming (monitors go
 black, fans spike to 100%, audio keeps running briefly, then the whole
 machine hangs) that look GPU/power related but weren't visible anywhere in
-the app. This is the live half of the investigation -- ongoing visibility
-into GPU temp/power/throttle state. The other half, correlating a crash
-after the fact against Windows' own crash/shutdown event log, lands in the
-next version.
+the app, and can't be observed by *any* running software once the machine
+actually hangs -- Windows itself only records what happened after the fact,
+on the next boot. Verified against the reporter's real machine: the crash
+detector immediately surfaced 32 real events in the last 30 days, including
+a Kernel-Power 41 unexpected shutdown paired with a WHEA hardware error on
+the GPU's PCI Express root port ~11 seconds apart -- consistent with a
+PCIe-link/power issue rather than a driver crash (zero
+"display driver stopped responding and recovered" events were found, which
+is what a pure software/TDR issue would normally log).
+
+(v0.29.0 was skipped: its tag push failed to trigger a release build due to
+a one-off CI issue, so its changes -- the GPU health tracking above -- were
+folded into this version instead. A `workflow_dispatch` fallback trigger
+was added to the Release workflow so a future occurrence can be retried
+without needing to delete and re-push a tag.)
 
 ## [0.28.0] - 2026-07-31
 
