@@ -3,6 +3,19 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.32.0] - 2026-08-06
+
+### Changed
+- History is now its own full page instead of a slide-in drawer -- opening
+  it replaces the dashboard (rings, Timeline, process panel) with a much
+  larger chart (220px -> 480px) and the spike table, with a "&larr; Back"
+  button to return. Opening Help or Debug while History is open closes it
+  first (and vice versa), so only one "mode" is ever showing.
+- History's chart now supports scroll-wheel zoom and drag-to-pan on the
+  time axis, via chartjs-plugin-zoom (+ hammer.js, required for pan)
+  vendored locally. A "Reset zoom" button snaps back to the full range.
+  Not enabled on the compact dashboard Timeline chart, only History's.
+
 ## [0.31.0] - 2026-08-06
 
 ### Fixed

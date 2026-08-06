@@ -161,6 +161,36 @@
         opacity: 1;
         pointer-events: auto;
       }
+      .history-page {
+        display: none;
+      }
+      body.history-open .history-page {
+        display: flex;
+        flex-direction: column;
+        gap: var(--pg-space-3);
+      }
+      body.history-open .ring-cluster,
+      body.history-open .io-cluster,
+      body.history-open #settings-panel,
+      body.history-open .panel:not(.history-page) {
+        display: none !important;
+      }
+      .history-page-title {
+        display: flex;
+        align-items: center;
+        gap: var(--pg-space-3);
+      }
+      .history-page-title h2 {
+        margin: 0;
+      }
+      .history-hint {
+        margin: 0;
+        font-size: 12px;
+        color: var(--pg-text-dim);
+      }
+      #history-chart {
+        height: 480px;
+      }
       #history-range-buttons {
         display: flex;
         gap: var(--pg-space-2);
@@ -594,15 +624,20 @@
 
     <div id="drawer-backdrop"></div>
 
-    <section id="history-panel" class="pg-panel panel drawer">
+    <section id="history-panel" class="pg-panel panel history-page">
       <div class="panel-header">
-        <h2>History</h2>
+        <div class="history-page-title">
+          <fluent-button id="history-back" appearance="outline">&larr; Back</fluent-button>
+          <h2>History</h2>
+        </div>
         <div id="history-range-buttons">
           <fluent-button data-range="24h" appearance="outline">24h</fluent-button>
           <fluent-button data-range="7d" appearance="outline">7 days</fluent-button>
           <fluent-button data-range="30d" appearance="outline">30 days</fluent-button>
+          <fluent-button id="history-reset-zoom" appearance="outline">Reset zoom</fluent-button>
         </div>
       </div>
+      <p class="history-hint">Scroll/wheel over the chart to zoom, drag to pan the timeline.</p>
       <spike-chart id="history-chart"></spike-chart>
       <h3 class="history-spikes-heading">Spikes in range</h3>
       <table id="history-spikes-table">
@@ -703,8 +738,10 @@
 
       <div class="help-section">
         <h3>History</h3>
-        <p>Browse what happened over the last 24 hours, 7 days, or 30 days -- a combined chart plus a list
-          of every spike in that range.</p>
+        <p>Opens as its own full page (use "&larr; Back" to return to the dashboard) so the chart has room
+          to work with. Browse what happened over the last 24 hours, 7 days, or 30 days -- a combined chart
+          plus a list of every spike in that range. Scroll/wheel over the chart to zoom in on the time axis,
+          drag to pan, and use "Reset zoom" to snap back out.</p>
       </div>
 
       <div class="help-section">
@@ -834,6 +871,8 @@
     <alert-toast id="toast"></alert-toast>
 
     <script src="vendor/chart.umd.min.js"></script>
+    <script src="vendor/hammer.min.js"></script>
+    <script src="vendor/chartjs-plugin-zoom.min.js"></script>
     <script type="module" src="js/app.js"></script>
   </body>
 </html>

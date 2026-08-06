@@ -237,6 +237,27 @@ export class SpikeChart extends HTMLElement {
       this._chart.update("none");
     }
   }
+
+  /** Opt-in wheel-zoom + drag-pan on the time axis, via chartjs-plugin-zoom
+   * (registered globally once its vendor script loads, but inert on any
+   * chart that doesn't explicitly configure it here) -- used by the History
+   * page's chart only, not the compact dashboard Timeline. */
+  enableZoomPan() {
+    this._chart.options.plugins.zoom = {
+      pan: { enabled: true, mode: "x" },
+      zoom: {
+        wheel: { enabled: true },
+        pinch: { enabled: false },
+        mode: "x",
+      },
+      limits: { x: { minRange: 60_000 } },
+    };
+    this._chart.update();
+  }
+
+  resetZoom() {
+    this._chart.resetZoom?.();
+  }
 }
 
 customElements.define("spike-chart", SpikeChart);

@@ -49,7 +49,8 @@ const gpuTempEl = document.getElementById("gpu-temp");
 const gpuPowerEl = document.getElementById("gpu-power");
 const gpuThrottleEl = document.getElementById("gpu-throttle");
 const historyToggle = document.getElementById("history-toggle");
-const historyPanel = document.getElementById("history-panel");
+const historyBackBtn = document.getElementById("history-back");
+const historyResetZoomBtn = document.getElementById("history-reset-zoom");
 const historyChart = document.getElementById("history-chart");
 const historyRangeButtons = document.getElementById("history-range-buttons");
 const historySpikesTbody = document.querySelector("#history-spikes-table tbody");
@@ -74,9 +75,10 @@ const crashEventsList = document.getElementById("crash-events-list");
 const crashEventsUnavailable = document.getElementById("crash-events-unavailable");
 const crashEventsRefreshBtn = document.getElementById("crash-events-refresh");
 
-const DRAWERS = [helpPanel, historyPanel, debugPanel];
+const DRAWERS = [helpPanel, debugPanel];
 
 function openDrawer(panel) {
+  closeHistoryPage(); // a drawer overlaying a different full page would be confusing -- only one "mode" at a time
   for (const d of DRAWERS) d.classList.toggle("open", d === panel);
   drawerBackdrop.classList.add("open");
 }
@@ -89,6 +91,23 @@ function toggleDrawer(panel) {
   else openDrawer(panel);
 }
 drawerBackdrop.addEventListener("click", closeDrawers);
+
+// History gets its own full page (not a drawer) so its chart has real room
+// to work with zoom/pan, instead of the cramped drawer width.
+let historyZoomEnabled = false;
+function openHistoryPage() {
+  closeDrawers();
+  document.body.classList.add("history-open");
+  if (!historyZoomEnabled) {
+    historyChart.enableZoomPan();
+    historyZoomEnabled = true;
+  }
+}
+function closeHistoryPage() {
+  document.body.classList.remove("history-open");
+}
+historyBackBtn.addEventListener("click", closeHistoryPage);
+historyResetZoomBtn.addEventListener("click", () => historyChart.resetZoom());
 
 // Debug tab: raw per-metric tick log plus backend health, for diagnosing the
 // "reconnect does nothing, everything froze" failure mode -- the goal is to
@@ -736,8 +755,8 @@ historyRangeButtons.addEventListener("click", (event) => {
 
 let historyLoadedOnce = false;
 historyToggle.addEventListener("click", () => {
-  toggleDrawer(historyPanel);
-  if (historyPanel.classList.contains("open") && !historyLoadedOnce) {
+  openHistoryPage();
+  if (!historyLoadedOnce) {
     historyLoadedOnce = true;
     historyRangeButtons.querySelector('fluent-button[data-range="24h"]')?.toggleAttribute("data-active", true);
     loadHistoryRange("24h");
